@@ -19,33 +19,36 @@ const router = express.Router();
 
 const createLead = async (data) => {
   const phone = data.phone_number;
-  const leadSnap = await db
-    .collection("leads")
-    .where("phone_number", "==", phone)
-    .get();
 
-  if (!leadSnap.empty) {
-    const leadData = leadSnap.docs[0].data();
-    if (data.source === "facebook") {
-      const leadId = leadData.leadId;
-      await db.collection("leads").doc(`1click${leadId}`).update({
-        updatedAt: Timestamp.now(),
-        disposition: "Not Open",
-        subDisposition: "Hot Lead",
-        reEnquire: true,
-      });
+  if (phone) {
+    const leadSnap = await db
+      .collection("leads")
+      .where("phone_number", "==", phone)
+      .get();
+
+    if (!leadSnap.empty) {
+      const leadData = leadSnap.docs[0].data();
+      if (data.source === "facebook") {
+        const leadId = leadData.leadId;
+        await db.collection("leads").doc(`1click${leadId}`).update({
+          updatedAt: Timestamp.now(),
+          disposition: "Not Open",
+          subDisposition: "Hot Lead",
+          reEnquire: true,
+        });
+      }
+      return { success: false, lead: leadData, message: "Lead already exists" };
+    } else {
+      const leadId = await generateId("lead");
+      const doc = `1click${leadId}`;
+      const leadBody = {
+        ...data,
+        leadId,
+        profileId: generateSerialNumber(leadId),
+      };
+      await db.collection("leads").doc(doc).set(leadBody);
+      return { success: true, lead: leadBody };
     }
-    return { success: false, lead: leadData, message: "Lead already exists" };
-  } else {
-    const leadId = await generateId("lead");
-    const doc = `1click${leadId}`;
-    const leadBody = {
-      ...data,
-      leadId,
-      profileId: generateSerialNumber(leadId),
-    };
-    await db.collection("leads").doc(doc).set(leadBody);
-    return { success: true, lead: leadBody };
   }
 };
 
