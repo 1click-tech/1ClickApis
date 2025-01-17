@@ -22,55 +22,12 @@ const getSalesMembers = async (req, res) => {
   }
 };
 
-// const updateLead = async (req, res) => {
-//   try {
-//     const body = req.body;
-//     const leadId = body.leadId;
-//     const followUpDate = body.followUpDate
-//       ? Timestamp.fromDate(moment(body.followUpDate).toDate())
-//       : null;
-//     body.followUpDate = followUpDate;
-//     delete body.leadId;
-
-//     const leadRef = db.collection("leads").doc(`1click${leadId}`);
-//     const historyRef = db
-//       .collection("leads")
-//       .doc(`1click${leadId}`)
-//       .collection("history");
-
-//     const historySnap = await historyRef
-//       .orderBy("updatedAt", "desc")
-//       .limit(1)
-//       .get();
-//     let dataTag = "NA";
-//     if (!historySnap.empty) {
-//       dataTag = historySnap.docs[0].data().disposition || "NA";
-//     }
-
-//     await leadRef.update({ ...body, updatedAt: Timestamp.now(), dataTag });
-//     await historyRef.doc().set({
-//       ...body,
-//       updatedAt: Timestamp.now(),
-//       updatedBy: req.userId,
-//       hierarchy: req.hierarchy,
-//     });
-
-//     res
-//       .status(200)
-//       .json({ success: true, message: "Lead updated successfully" });
-//   } catch (error) {
-//     console.log(error);
-//     res.status(500).json({ message: error.message, success: false });
-//   }
-// };
-
-
 const updateLead = async (req, res) => {
   try {
     const body = req.body;
     const leadId = body.leadId;
     const followUpDate = body.followUpDate
-      ? Timestamp.fromDate(moment(body.followUpDate).utc().toDate()) // Convert to UTC
+      ? Timestamp.fromDate(moment(body.followUpDate).toDate())
       : null;
     body.followUpDate = followUpDate;
     delete body.leadId;
@@ -90,12 +47,7 @@ const updateLead = async (req, res) => {
       dataTag = historySnap.docs[0].data().disposition || "NA";
     }
 
-    await leadRef.update({
-      ...body,
-      updatedAt: Timestamp.now(),
-      dataTag,
-      followUpDateTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, // Store timezone
-    });
+    await leadRef.update({ ...body, updatedAt: Timestamp.now(), dataTag });
     await historyRef.doc().set({
       ...body,
       updatedAt: Timestamp.now(),
