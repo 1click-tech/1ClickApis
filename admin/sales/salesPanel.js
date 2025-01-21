@@ -26,10 +26,11 @@ const updateLead = async (req, res) => {
   try {
     const body = req.body;
     const leadId = body.leadId;
-    const followUpDate = body.followUpDate
-      ? Timestamp.fromDate(moment(body.followUpDate).toDate())
+    const followUpDate = body.followUpDate;
+    const updatedFollowUpdate = followUpDate
+      ? moment(followUpDate).utc().toDate()
       : null;
-    body.followUpDate = followUpDate;
+    body.followUpDate = updatedFollowUpdate;
     delete body.leadId;
 
     const leadRef = db.collection("leads").doc(`1click${leadId}`);
