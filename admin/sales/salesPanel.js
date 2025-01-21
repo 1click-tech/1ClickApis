@@ -28,8 +28,10 @@ const updateLead = async (req, res) => {
     const leadId = body.leadId;
     const followUpDate = body.followUpDate;
     const updatedFollowUpdate = followUpDate
-      ? moment(followUpDate).utc().toDate()
+      ? Timestamp.fromDate(moment(followUpDate).utc().toDate())
       : null;
+
+    console.log("followupdate", updatedFollowUpdate);
     body.followUpDate = updatedFollowUpdate;
     delete body.leadId;
 
