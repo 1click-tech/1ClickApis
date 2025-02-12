@@ -8,18 +8,23 @@
 
 const userRoles = [
   {
-    department: "management", hierarchy: ["superAdmin", "Director",
-      'Founder & CEO',
+    department: "management",
+    hierarchy: [
+      "superAdmin",
+      "Director",
+      "Founder & CEO",
       "Co - Founder & COO",
       "Chief Financial Officer",
       "Chief Strategy Officer",
       "Complaince Officer",
       "General Manager",
-      "Assistant General Manager"]
+      "Assistant General Manager",
+    ],
   },
   {
     department: "sales",
-    hierarchy: ["Vice President",
+    hierarchy: [
+      "Vice President",
       "Assistant Vice President",
       "Branch Manager",
       "Manager",
@@ -27,7 +32,8 @@ const userRoles = [
       "Assistant Manager",
       "Sr.Executive",
       "Executive",
-      "Intern"],
+      "Intern",
+    ],
   },
   {
     department: "Clients Service",
@@ -41,8 +47,8 @@ const userRoles = [
       "Customer Success Manager",
       "Sr. Executive",
       "Executive",
-      "Intern"
-    ]
+      "Intern",
+    ],
   },
   {
     department: "Human Resource",
@@ -54,8 +60,8 @@ const userRoles = [
       "HR Manager",
       "Sr.Executive",
       "Executive",
-      "Intern"
-    ]
+      "Intern",
+    ],
   },
   {
     department: "Accounts",
@@ -66,8 +72,8 @@ const userRoles = [
       "Sr. Manager",
       "Manager",
       "Executive",
-      "Intern"
-    ]
+      "Intern",
+    ],
   },
   {
     department: "Technology",
@@ -86,8 +92,8 @@ const userRoles = [
       "Social Media Marketing Executive",
       "Manager Graphic Design",
       "Graphic Design Executive",
-      "Intern"
-    ]
+      "Intern",
+    ],
   },
   {
     department: "Administration",
@@ -97,9 +103,53 @@ const userRoles = [
       "Manager",
       "Executive",
       "Housekeeping Manager",
-      "House Keeping Executive"
-    ]
-  }
+      "House Keeping Executive",
+    ],
+  },
 ];
+
+const dispositions = [
+  "Not Open",
+  "No Response",
+  "Call Back",
+  "Presentation",
+  "FollowUp",
+  "Prospect",
+  "Payment",
+  "Not Interested",
+  "Presentation NI",
+  "Prospect NI",
+  "No Contactable",
+  "Become Distributor",
+  "Deal Done",
+];
+
+const subDispositions = {
+  "Not Open": ["Hot Lead"],
+  "No Response": ["Ringing", "S.Off", "Not Reachable", "Hung Up"],
+  "Call Back": ["Call Back"],
+  Presentation: [
+    "Present-Digi Pro",
+    "Present-Grow Max",
+    "Present-SMM",
+    "Present-Website",
+    "Present-Other",
+  ],
+  FollowUp: ["Presentation-Followup"],
+  Prospect: ["Prospect-Followup"],
+  Payment: ["Payment-Followup"],
+  "Not Interested": ["Opted for Competition", "Price Issue", "Not Now"],
+  "Presentation NI": ["Opted for Competition", "Price Issue", "Not Now"],
+  "Prospect NI": ["Opted for Competition", "Price Issue", "Not Now"],
+  "Become Distributor": ["None"],
+  "No Contactable": ["Wrong Number", "None"],
+  "Deal Done": [
+    "Present - Digi Pro",
+    "Present - Grow Max",
+    "Present - SMM",
+    "Present - Website",
+    "Present - Other",
+  ],
+};
 
 module.exports = { userRoles };
