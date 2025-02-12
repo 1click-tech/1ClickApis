@@ -4,6 +4,7 @@ const { checkAuth } = require("../../middlewares/authMiddleware");
 const moment = require("moment");
 const { Timestamp, FieldValue } = require("firebase-admin/firestore");
 const { userRoles } = require("../../data/commonData");
+const ExcelJS = require("exceljs");
 const {
   generateId,
   getTeamMembersOfUser,
@@ -979,32 +980,91 @@ const getContractDetails = async (req, res) => {
   }
 };
 
+// Get Hot leads for downloads in excel sheet
+const getHotLeads = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.body;
+
+    // Create start and end dates for the query
+    let start = moment(startDate).startOf("day").toDate();
+    let end = moment(endDate).endOf("day").toDate();
+
+    // Convert dates to Firestore Timestamps (if needed)
+    let stampStart = Timestamp.fromDate(start);
+    let stampEnd = Timestamp.fromDate(end);
+
+    // Query Firestore
+    const allLeads = await db
+      .collection("leads")
+      .where("createdAt", ">=", stampStart)
+      .where("createdAt", "<=", stampEnd)
+      .where("source", "==", "facebook")
+      .get();
+
+    // Extract the data from each document
+    let leads = allLeads.docs.map((doc) => doc.data());
+    leads = leads.map((lead) => {
+      const createdAt = moment(lead.createdAt.toDate()).format("DD/MM/YYYY");
+
+      delete lead.created_time;
+      delete lead.leadId;
+      delete lead.salesExecutive;
+      delete lead.salesExecutiveName;
+      delete lead.assignedBy;
+      delete lead.dataTag;
+      delete lead.updatedAt;
+      delete lead.assignedAt;
+      delete lead.followUpDate;
+      delete lead.your_mobile_number;
+
+      return { ...lead, createdAt };
+    });
+
+    // Create a new Excel workbook and add a worksheet
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Hot Leads");
+
+    // If you know the structure of your data, you can define columns explicitly.
+    // Otherwise, if you want to dynamically use the keys from the first lead:
+    if (leads.length > 0) {
+      const columns = Object.keys(leads[0]).map((key) => ({
+        header: key, // Column header in the Excel file
+        key: key, // Key in your data object
+        width: 20, // Optional: set a width for the column
+      }));
+      worksheet.columns = columns;
+    } else {
+      // If no leads, you can set default columns or simply leave it empty.
+      worksheet.columns = [];
+    }
+
+    // Add each lead as a row in the worksheet
+    leads.forEach((lead) => {
+      worksheet.addRow(lead);
+    });
+
+    // Set the appropriate headers so the browser will download the file
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader("Content-Disposition", "attachment; filename=hot_leads.xlsx");
+
+    // Write the Excel file directly to the response.
+    // The write() method returns a Promise so you can await it.
+    await workbook.xlsx.write(res);
+
+    // End the response
+    res.end();
+  } catch (error) {
+    res.status(500).send({ success: false, message: error.message });
+  }
+};
+
 const changeToDate = (date) => {
   if (!date._seconds) return null;
   let dt = new Timestamp(date._seconds, date._nanoseconds).toDate();
   return moment(dt).format("DD-MM-YYYY hh:mm A");
-};
-
-const getHotLeads = async (req, res) => {
-  let startDate = moment("01-01-2025", "DD-MM-YYYY").startOf("day");
-  let endDate = moment("31-01-2025", "DD-MM-YYYY").endOf("day");
-  const snap = await db
-    .collection("leads")
-    .where("createdAt", ">=", startDate)
-    .where("createdAt", "<=", endDate)
-    .where("source", "==", "facebook")
-    .get();
-
-  let data = snap.docs.map((doc) => doc.data());
-  data = data.map((item) => {
-    Object.keys(item).forEach((key) => {
-      if (item[key]?._seconds) {
-        item[key] = changeToDate(item[key]);
-      }
-    });
-    return item;
-  });
-  res.send({ len: data.length, data });
 };
 
 const deleteDataFromDb = async (req, res) => {
@@ -1019,7 +1079,7 @@ const deleteDataFromDb = async (req, res) => {
 
     const { leads } = req.body;
 
-    console.log("leads", leads,req.body);
+    console.log("leads", leads, req.body);
 
     if (!leads?.length) {
       return res
@@ -1061,7 +1121,7 @@ router.get("/getUpdatedLeadsCount", checkAuth, getUpdatedLeadsCount);
 router.post("/getDataForDashboard", checkAuth, getDataForDashboard);
 router.post("/getContractDetails", checkAuth, getContractDetails);
 router.get("/getAllAllocatedLeads", checkAuth, getAllAllocatedLeads);
+router.post("/getHotLeads", getHotLeads);
 router.post("/deleteDataFromDb", checkAuth, deleteDataFromDb);
-// router.get("/getHotLeads", getHotLeads);
 
 module.exports = { leads: router, createLead };

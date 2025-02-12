@@ -120,9 +120,14 @@ const getLeadsStats = async (salesMemberId) => {
   };
 };
 
+const removeCountryCode = (phone) => {
+  return phone.toString().replace(/^\+91/, "");
+};
+
 module.exports = {
   generateId,
   getTeamMembersOfUser,
   getLeadsStats,
   generateSerialNumber,
+  removeCountryCode,
 };

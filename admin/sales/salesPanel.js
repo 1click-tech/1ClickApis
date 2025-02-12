@@ -3,7 +3,12 @@ const { db } = require("../../config/firebase");
 const { checkAuth } = require("../../middlewares/authMiddleware");
 const { Timestamp } = require("firebase-admin/firestore");
 const moment = require("moment");
-const { getLeadsStats, generateId } = require("../../utils/utils");
+const {
+  getLeadsStats,
+  generateId,
+  removeCountryCode,
+  getTeamMembersOfUser,
+} = require("../../utils/utils");
 const router = express.Router();
 
 const getSalesMembers = async (req, res) => {
@@ -95,25 +100,48 @@ const contactDetails = async (req, res) => {
     const body = req.body;
     const leadId = body.leadId;
     const contactDetails = body.contactDetails;
-    const altPhoneNumber = contactDetails.details.altPhoneNumber;
-    delete body.leadId;
 
-    await db
-      .collection("leads")
-      .doc(`1click${leadId}`)
-      .collection("details")
-      .doc("contactDetails")
-      .set(contactDetails);
+    const defaultPhone = parseInt(
+      removeCountryCode(contactDetails.phone_number)
+    );
+    const defaultMobile = parseInt(
+      removeCountryCode(contactDetails.mobile_number)
+    );
+    const altContactPhone = parseInt(
+      removeCountryCode(contactDetails.altContact.phone_number)
+    );
+    const altContactMobile = parseInt(
+      removeCountryCode(contactDetails.altContact.mobile_number)
+    );
+    const officeContactPhone = parseInt(
+      removeCountryCode(contactDetails.officeContact.mobile_number)
+    );
+    const officeContactMobile = parseInt(
+      removeCountryCode(contactDetails.officeContact.mobile_number)
+    );
 
-    await db
-      .collection("leads")
-      .doc(`1click${leadId}`)
-      .update({ altPhoneNumber: altPhoneNumber });
+    const details = {
+      ...contactDetails,
+      phone_number: defaultPhone,
+      mobile_number: defaultMobile,
+      altContact: {
+        ...contactDetails.altContact,
+        phone_number: altContactPhone,
+        mobile_number: altContactMobile,
+      },
+      officeContact: {
+        ...contactDetails.officeContact,
+        phone_number: officeContactPhone,
+        mobile_number: officeContactMobile,
+      },
+    };
 
+    await db.collection("leads").doc(`1click${leadId}`).update(details);
     res
       .status(200)
       .json({ success: true, message: "Contact details updated successfully" });
   } catch (error) {
+    console.log(error.message);
     res.status(500).json({ message: error.message, success: false });
   }
 };
@@ -369,6 +397,48 @@ const addNewInvoice = async (req, res) => {
   }
 };
 
+const getTotalAssignedLeads = async (req, res) => {
+  try {
+    const userId = req.userId;
+
+    // getting all the internal user to filterout the member of the current user's team
+    const allUsersSnap = await db
+      .collection("users")
+      .doc("internal_users")
+      .collection("credentials")
+      .get();
+    const allUsers = allUsersSnap.docs.map((item) => item.data());
+    // filter the team members
+    const getTeamMembers = await getTeamMembersOfUser(userId, allUsers);
+    let allTeamMemberIds = [];
+
+    // extract the ids of all the team members including user'
+    if (req.hierarchy == "superAdmin") {
+      allTeamMemberIds = allUsers?.map((user) => user.id);
+    } else {
+      if (Array.isArray(getTeamMembers)) {
+        allTeamMemberIds = getTeamMembers?.map((user) => user.id);
+      }
+      allTeamMemberIds.push(userId);
+    }
+
+    // getting the assigned lead to all the team member of user
+    let allLeads = 0;
+    for (let teamMemberId of allTeamMemberIds) {
+      let snap = await db
+        .collection("leads")
+        .where("salesExecutive", "==", teamMemberId)
+        .get();
+
+      allLeads += snap.size;
+    }
+
+    res.status(200).send({ totalLeads: allLeads, success: true });
+  } catch (error) {
+    res.status(500).send({ message: error.message, success: false });
+  }
+};
+
 router.get("/getSalesMembers", checkAuth, getSalesMembers);
 router.post("/updateLead", checkAuth, updateLead);
 router.post("/updateBusinessDetails", checkAuth, updateBusinessDetails);
@@ -382,5 +452,6 @@ router.post("/updateLockLeadsStatus", checkAuth, updateLockLeadsStatus);
 router.get("/getLockLeadsStatus", checkAuth, getLockLeadsStatus);
 router.post("/raisePI", checkAuth, raisePI);
 router.post("/addNewInvoice", checkAuth, addNewInvoice);
+router.get("/getTotalAssignedLeads", checkAuth, getTotalAssignedLeads);
 
 module.exports = { salesPanel: router };
