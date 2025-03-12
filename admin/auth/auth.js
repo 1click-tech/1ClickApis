@@ -43,7 +43,7 @@ const logIn = async (req, res) => {
       .collection("users")
       .doc("internal_users")
       .collection("credentials")
-      .where("emails", "==", email.toLowerCase())
+      .where("email", "==", email.toLowerCase())
       .get();
 
     if (userSnap.empty) {
