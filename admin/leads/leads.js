@@ -156,12 +156,19 @@ const assignLeadsToSalesMember = async (req, res) => {
     const userData = snapshot.data();
 
     for (let lead of leads) {
-      await db.collection("leads").doc(`1click${lead}`).update({
+      const ref = db.collection("leads").doc(`1click${lead}`);
+      const snapshot = await ref.get();
+      const leadData = snapshot.data();
+      const allocateData = {
         salesExecutive: salesMember,
         assignedBy: userData.name,
         assignedAt: Timestamp.now(),
         salesExecutiveName: salesMemberName,
-      });
+      };
+      if (leadData.disposition === "Not Interested") {
+        allocateData.disposition = "Not Open";
+      }
+      await ref.update(allocateData);
     }
 
     res
@@ -544,10 +551,30 @@ const getLeadDetails = async (req, res) => {
       .orderBy("followUpDate", "desc")
       .get();
 
-    const historyData = historySnap.docs.map((item) => ({
+    let historyData = historySnap.docs.map((item) => ({
       id: item.id,
       ...item.data(),
     }));
+
+    historyData = await Promise.all(
+      historyData.map(async (history) => {
+        const updatedBy = history.updatedBy;
+        const usersSnap = await db
+          .collection("users")
+          .doc("internal_users")
+          .collection("credentials")
+          .doc(updatedBy)
+          .get();
+        if (usersSnap.exists) {
+          const userData = usersSnap.data();
+          history.updatedBy = userData.name;
+        } else {
+          history.updated = "";
+        }
+
+        return history;
+      })
+    );
 
     const lastCallBackDate =
       historyData.length >= 2 ? historyData[1].followUpDate : null;
