@@ -824,140 +824,109 @@ const getAllAllocatedLeads = async (req, res) => {
 
 const getDataForDashboard = async (req, res) => {
   try {
-    const { endDate, startDate } = req.body;
+    const { endDate, startDate, memberId } = req.body;
     let start = moment(startDate).startOf("day").toDate();
     let end = moment(endDate).endOf("day").toDate();
 
-    const memberId = req.body.memberId;
-
-    // convert date to timestamp
     let stampStart = Timestamp.fromDate(start);
     let stampEnd = Timestamp.fromDate(end);
-
     const userId = req.userId;
 
-    // getting all the internal user to filterout the member of the current user's team
+    // Fetch all internal users (credentials collection)
     const allUsersSnap = await db
       .collection("users")
       .doc("internal_users")
       .collection("credentials")
       .get();
-    const allUsers = allUsersSnap.docs.map((item) => item.data());
+    const allUsers = allUsersSnap.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
 
-    // filter the team members
+    // Get team members
     const getTeamMembers = await getTeamMembersOfUser(userId, allUsers);
     let allTeamMemberIds = [];
-
     let membersData = [];
 
-    // extract the ids of all the team members including user'
-    if (req.hierarchy == "superAdmin") {
-      allTeamMemberIds = allUsers?.map((user) => user.id);
-      const members = allUsers.filter((user) => user.id !== userId);
-      membersData.push(...members);
+    if (req.hierarchy === "superAdmin") {
+      allTeamMemberIds = allUsers.map((user) => user.id);
+      membersData = allUsers.filter((user) => user.id !== userId);
     } else {
       if (Array.isArray(getTeamMembers)) {
-        allTeamMemberIds = getTeamMembers?.map((user) => user.id);
+        allTeamMemberIds = getTeamMembers.map((user) => user.id);
       }
       allTeamMemberIds.unshift(userId);
       const currentUser = allUsers.find((user) => user.id === userId);
       membersData.push(currentUser, ...getTeamMembers);
     }
 
-    // getting the assigned lead to all the team member of user
+    // Fetch leads and their history
     let allLeads = [];
-    // For particular member leads
-    if (memberId) {
-      const currentMember = allUsers.find((user) => user.id === memberId);
-      // if current user is manager than all of his sales team data
-      if (currentMember.hierarchy === "manager") {
-        const managerMembers = await getTeamMembersOfUser(memberId, allUsers);
-        const membersOfManager = managerMembers?.map((user) => user.id);
-        const allMemberIds = [memberId, ...membersOfManager];
-        for (let teamMemberId of allMemberIds) {
-          const snap = await db
-            .collection("leads")
-            .where("updatedAt", ">=", stampStart)
-            .where("updatedAt", "<=", stampEnd)
-            .where("salesExecutive", "==", teamMemberId)
-            .get();
 
-          let snapData = snap.docs.map((doc) => doc.data());
-          // here add the name of the sales executive and assigned by user's
-          snapData = snapData.map((lead) => {
-            if (lead?.salesExecutive) {
-              let salesUser = allUsers.find(
-                (user) => user.id == lead.salesExecutive
-              );
-              lead.salesExecutiveName = salesUser?.name;
-            }
-            if (lead?.assignedBy) {
-              let assignedByUser = allUsers.find(
-                (user) => user.id == lead?.assignedBy
-              );
-              lead.assignedBy = assignedByUser?.name || null;
-            }
-            return lead;
-          });
+    const fetchLeadsForMember = async (teamMemberId) => {
+      const snap = await db
+        .collection("leads")
+        .where("updatedAt", ">=", stampStart)
+        .where("updatedAt", "<=", stampEnd)
+        .where("salesExecutive", "==", teamMemberId)
+        .get();
 
-          allLeads = [...allLeads, ...snapData];
-        }
-      } else {
-        const snap = await db
+      let snapData = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+      for (let lead of snapData) {
+        // Fetch history subcollection for each lead
+        const historySnap = await db
           .collection("leads")
-          .where("updatedAt", ">=", stampStart)
-          .where("updatedAt", "<=", stampEnd)
-          .where("salesExecutive", "==", memberId)
+          .doc(lead.id)
+          .collection("history")
           .get();
 
-        let snapData = snap.docs.map((doc) => doc.data());
-        // here add the name of the sales executive and assigned by user's
-        snapData = snapData.map((lead) => {
-          if (lead?.salesExecutive) {
-            let salesUser = allUsers.find(
-              (user) => user.id == lead.salesExecutive
-            );
-            lead.salesExecutiveName = salesUser?.name;
-          }
-          if (lead?.assignedBy) {
-            let assignedByUser = allUsers.find(
-              (user) => user.id == lead?.assignedBy
-            );
-            lead.assignedBy = assignedByUser?.name || null;
-          }
-          return lead;
+        let historyData = historySnap.docs.map((doc) => doc.data());
+
+        // Attach "updatedBy" name to history using cached users
+        historyData = historyData.map((history) => {
+          let updatedByUser = allUsers.find((user) => user.id === history.updatedBy);
+          return {
+            ...history,
+            updatedByName: updatedByUser ? updatedByUser.name : "Unknown",
+          };
         });
 
-        allLeads = [...allLeads, ...snapData];
+        lead.history = historyData;
+
+        // Attach salesExecutiveName and assignedBy
+        if (lead.salesExecutive) {
+          let salesUser = allUsers.find((user) => user.id === lead.salesExecutive);
+          lead.salesExecutiveName = salesUser ? salesUser.name : "Unknown";
+        }
+        if (lead.assignedBy) {
+          let assignedByUser = allUsers.find((user) => user.id === lead.assignedBy);
+          lead.assignedByName = assignedByUser ? assignedByUser.name : "Unknown";
+        }
+      }
+
+      return snapData;
+    };
+
+    if (memberId) {
+      const currentMember = allUsers.find((user) => user.id === memberId);
+
+      if (currentMember?.hierarchy === "manager") {
+        const managerMembers = await getTeamMembersOfUser(memberId, allUsers);
+        const allMemberIds = [memberId, ...managerMembers.map((user) => user.id)];
+
+        for (let teamMemberId of allMemberIds) {
+          const memberLeads = await fetchLeadsForMember(teamMemberId);
+          allLeads.push(...memberLeads);
+        }
+      } else {
+        const memberLeads = await fetchLeadsForMember(memberId);
+        allLeads.push(...memberLeads);
       }
     } else {
       for (let teamMemberId of allTeamMemberIds) {
-        const snap = await db
-          .collection("leads")
-          .where("updatedAt", ">=", stampStart)
-          .where("updatedAt", "<=", stampEnd)
-          .where("salesExecutive", "==", teamMemberId)
-          .get();
-
-        let snapData = snap.docs.map((doc) => doc.data());
-        // here add the name of the sales executive and assigned by user's
-        snapData = snapData.map((lead) => {
-          if (lead?.salesExecutive) {
-            let salesUser = allUsers.find(
-              (user) => user.id == lead.salesExecutive
-            );
-            lead.salesExecutiveName = salesUser?.name;
-          }
-          if (lead?.assignedBy) {
-            let assignedByUser = allUsers.find(
-              (user) => user.id == lead?.assignedBy
-            );
-            lead.assignedBy = assignedByUser?.name || null;
-          }
-          return lead;
-        });
-
-        allLeads = [...allLeads, ...snapData];
+        const memberLeads = await fetchLeadsForMember(teamMemberId);
+        allLeads.push(...memberLeads);
       }
     }
 
@@ -970,6 +939,7 @@ const getDataForDashboard = async (req, res) => {
 
     res.status(200).send({ success: true, leads: allLeads, membersData });
   } catch (error) {
+    console.error("Error fetching dashboard data:", error);
     res.status(500).send({ success: false, message: error.message });
   }
 };
