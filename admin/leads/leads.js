@@ -426,7 +426,7 @@ const importLeadsFromExcel = async (req, res) => {
         .status(400)
         .json({ message: "No file uploaded", success: false });
     }
-
+   console.log("reached")
     const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
@@ -456,9 +456,19 @@ const importLeadsFromExcel = async (req, res) => {
         }
       }
 
-      let stampValue = Timestamp.fromDate(
-        moment(row.Date, "DD-MM-YYYY").toDate()
-      );
+      // let stampValue = Timestamp.fromDate(
+      //   moment(row.Date, "DD-MM-YYYY").toDate()
+      // );
+      let stampValue;
+const dateMoment = moment(row.Date, "DD-MM-YYYY", true);
+
+if (dateMoment.isValid()) {
+  stampValue = Timestamp.fromDate(dateMoment.toDate());
+} else {
+  console.warn(`Invalid date in row: "${row.Date}". Using current date.`);
+  stampValue = Timestamp.fromDate(new Date()); // or skip row, your choice
+}
+
 
       const leadBody = {
         createdAt: stampValue,
