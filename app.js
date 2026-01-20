@@ -30,8 +30,10 @@ app.use("/admin/sales", salesPanel);
 // panel
 const { panel } = require("./admin/panel/panel");
 app.use("/admin/panel", panel);
+const { websiteAnalyzer } = require("./utils/openAI/websiteAnalyzer");
+app.use("/openAI/websiteAnalyzer", websiteAnalyzer);
 
-const PORT = parseInt(process.env.PORT) || 8080;
+const PORT = parseInt(process.env.PORT) || 3000;
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
