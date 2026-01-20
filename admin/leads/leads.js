@@ -360,6 +360,71 @@ const createdManualLead = async (req, res) => {
   }
 };
 
+const createWebsiteLead = async (req, res) => {
+  try {
+    const { phone } = req.body;
+
+    if (!phone) {
+      return res
+        .status(400)
+        .send({ success: false, message: "Phone number is required" });
+    }
+
+    const leadBody = {
+      createdAt: Timestamp.now(),
+      createdBy: req.userId || null,
+
+      looking_for: null,
+      company_name: null,
+      full_name: null,
+      phone_number: phone,
+      your_mobile_number: phone,
+      email: null,
+      city: null,
+      ["whats_is_your_requirement_?_write_in_brief"]: null,
+
+      profileScore: null,
+      salesExecutive: null,
+      disposition: null,
+      subDisposition: null,
+      remarks: null,
+
+      source: "website",
+      adType: "website",
+
+      assignedAt: null,
+      assignedBy: null,
+      followUpDate: null,
+
+      updatedAt: Timestamp.now(),
+    };
+
+    const result = await createLead(leadBody);
+
+    const docId = `1click${result.lead.leadId}`;
+
+    // Optional: minimal history for website lead
+    await db
+      .collection("leads")
+      .doc(docId)
+      .collection("history")
+      .doc()
+      .set({
+        updatedAt: Timestamp.now(),
+        updatedBy: req.userId || null,
+        remarks: "Lead checked their website",
+      });
+
+    res
+      .status(200)
+      .send({ success: true, message: "Website lead created successfully" });
+  } catch (error) {
+    res.status(500).send({ success: false, message: error.message });
+  }
+};
+
+
+
 const manupulateLeads = async (req, res) => {
   try {
     const leads = await db.collection("leads").get();
@@ -1116,6 +1181,7 @@ router.post(
 );
 
 router.post("/getLeads", checkAuth, getLeads);
+router.post("/createWebsiteLead", createWebsiteLead);
 router.post("/assignLeadsToSalesMember", checkAuth, assignLeadsToSalesMember);
 router.get("/getSalesTeamMembers", checkAuth, getSalesTeamMembers);
 router.post("/getUpdateHistoryOfLead", checkAuth, getUpdateHistoryOfLead);
