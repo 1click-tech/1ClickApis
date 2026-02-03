@@ -32,6 +32,8 @@ const { panel } = require("./admin/panel/panel");
 app.use("/admin/panel", panel);
 const { websiteAnalyzer } = require("./utils/openAI/websiteAnalyzer");
 app.use("/openAI/websiteAnalyzer", websiteAnalyzer);
+const { chatbot } = require("./utils/openAI/chatbot");
+app.use("/openAI/chatbot", chatbot);
 
 const PORT = parseInt(process.env.PORT) || 3000;
 

@@ -1,0 +1,193 @@
+{
+  "organization": {
+    "name": "1ClickDistributors",
+    "website": "https://1clickdistributors.com",
+    "description": "1ClickDistributors is a B2B business growth and distribution platform that helps manufacturers, brands, and MSMEs connect with distributors, dealers, and franchise partners across India.",
+    "founded_year": 2018,
+    "industry": "Business Consulting & Distribution Services",
+    "country": "India"
+  },
+
+  "mission": "To simplify and accelerate distribution expansion for manufacturers and MSMEs by connecting them with verified distributors and providing strategic consultancy and digital growth support.",
+
+  "target_audience": [
+    "Manufacturers",
+    "Brands",
+    "MSMEs",
+    "Entrepreneurs",
+    "Distributors",
+    "Franchise seekers"
+  ],
+
+  "services": [
+    {
+      "service_id": "distributor_network",
+      "name": "Distributor & Dealer Network",
+      "description": "Connects brands with verified distributors and dealers using industry, location, and business-size filters."
+    },
+    {
+      "service_id": "franchise_opportunities",
+      "name": "Franchise Opportunities",
+      "description": "Provides franchise listings and guidance for entrepreneurs across multiple industries."
+    },
+    {
+      "service_id": "business_consultancy",
+      "name": "Consultancy & Strategy Support",
+      "description": "Includes distribution strategy planning, GTM support, pitch deck creation, onboarding assistance, and retention strategies."
+    },
+    {
+      "service_id": "growth_marketing",
+      "name": "Growth & Marketing Support",
+      "description": "Offers 360-degree promotion, market research, analytics, and e-commerce growth support."
+    },
+    {
+      "service_id": "trade_networking",
+      "name": "Trade Shows & Networking",
+      "description": "Supports brand exposure and lead generation through trade shows and networking opportunities."
+    }
+  ],
+
+  "digital_services": [
+    {
+      "service_id": "website_development",
+      "name": "Website Design & Development",
+      "description": "Provides professional website design and development solutions including business websites and landing pages to support brand visibility and lead generation."
+    },
+    {
+      "service_id": "seo_optimization",
+      "name": "SEO & Search Visibility Optimization",
+      "description": "Offers SEO support to improve website visibility and organic reach through structured optimization and best practices."
+    },
+    {
+      "service_id": "website_performance_optimization",
+      "name": "Website Performance & Speed Optimization",
+      "description": "Helps improve website loading speed, user experience, and overall performance through performance analysis and optimization support."
+    },
+    {
+      "service_id": "digital_growth_strategy",
+      "name": "Digital Growth & Online Strategy",
+      "description": "Provides strategic guidance on digital presence, analytics review, and online growth planning aligned with business goals."
+    }
+  ],
+
+  "industries_served": [
+    "FMCG",
+    "Food & Beverages",
+    "Chemicals",
+    "Electronics",
+    "Electrical",
+    "Automobile Parts",
+    "Apparel & Fashion",
+    "Industrial Goods",
+    "Consumer Products"
+  ],
+
+  "how_it_works": [
+    {
+      "step": 1,
+      "title": "Brand Registration",
+      "description": "Brands or manufacturers create a profile and list their products and distribution requirements."
+    },
+    {
+      "step": 2,
+      "title": "Distributor Matching",
+      "description": "The platform matches brands with suitable distributors based on industry, geography, and capacity."
+    },
+    {
+      "step": 3,
+      "title": "Connection & Discussion",
+      "description": "Brands and distributors communicate to discuss terms and opportunities."
+    },
+    {
+      "step": 4,
+      "title": "Consultancy & Execution",
+      "description": "Optional expert support for onboarding, strategy execution, digital growth, and market expansion."
+    }
+  ],
+
+  "value_proposition": {
+    "for_brands": [
+      "Faster distributor discovery",
+      "Pan-India market reach",
+      "Professional distribution and digital strategy",
+      "Reduced expansion risk"
+    ],
+    "for_entrepreneurs": [
+      "Access to distributorship opportunities",
+      "Franchise business options",
+      "Guided onboarding and growth support"
+    ]
+  },
+
+  "service_scope_notes": [
+    "All services are provided as professional consultancy and support based on business requirements.",
+    "Specific technical implementations, tools, timelines, pricing, or guarantees are discussed after requirement evaluation.",
+    "The chatbot provides high-level guidance and does not replace expert consultation."
+  ],
+
+  "contact_information": {
+    "email": "contact@1clickdistributors.com",
+    "phone": "+91-8588999978",
+    "registered_office": "B-2/11, Block B, Mohan Cooperative Industrial Estate, Badarpur, Delhi 110044, India",
+    "corporate_office": "A-81, Ground Floor, Sector 4, Noida, Uttar Pradesh 201301, India"
+  },
+
+  "faqs": [
+    {
+      "question": "What is 1ClickDistributors?",
+      "answer": "1ClickDistributors is a B2B platform that helps manufacturers, brands, and MSMEs expand their business by connecting them with distributors, dealers, and franchise partners across India, along with consultancy and growth support."
+    },
+    {
+      "question": "Who can use 1ClickDistributors?",
+      "answer": "Manufacturers, brands, MSMEs, distributors, entrepreneurs, and franchise seekers can use the platform for business expansion and growth support."
+    },
+    {
+      "question": "Which industries are supported?",
+      "answer": "Industries supported include FMCG, food and beverages, chemicals, electronics, apparel, automobile parts, industrial goods, and consumer products."
+    },
+    {
+      "question": "What services does 1ClickDistributors provide?",
+      "answer": "The company provides distributor and dealer network services, franchise opportunities, consultancy and strategy support, growth and marketing support, trade networking, and digital services including website and performance optimization."
+    },
+    {
+      "question": "Do you help with distributor or dealer onboarding?",
+      "answer": "Yes, the platform helps brands connect with verified distributors and dealers and supports onboarding through consultancy and strategy services."
+    },
+    {
+      "question": "Do you provide franchise opportunities?",
+      "answer": "Yes, 1ClickDistributors offers franchise listings and guidance for entrepreneurs across multiple industries."
+    },
+    {
+      "question": "Do you offer business consultancy?",
+      "answer": "Yes, consultancy services include distribution strategy planning, GTM support, pitch deck creation, onboarding assistance, and retention strategies."
+    },
+    {
+      "question": "Do you provide website development services?",
+      "answer": "Yes, the company provides website design and development services to support professional online presence and lead generation."
+    },
+    {
+      "question": "Do you offer SEO services?",
+      "answer": "Yes, SEO and search visibility optimization services are offered to improve organic reach and website discoverability."
+    },
+    {
+      "question": "Can you help improve website performance and speed?",
+      "answer": "Yes, 1ClickDistributors provides website performance and speed optimization support focused on improving loading speed, user experience, and overall website performance."
+    },
+    {
+      "question": "Do you provide technical implementation details through the chatbot?",
+      "answer": "No, the chatbot provides high-level guidance only. Detailed technical execution is discussed with the expert team after requirement evaluation."
+    },
+    {
+      "question": "How can I contact 1ClickDistributors?",
+      "answer": "You can contact the team via email at contact@1clickdistributors.com or by phone at +91-8588999978."
+    }
+  ],
+
+  "intended_use": [
+    "Customer support chatbot",
+    "Sales & pre-sales assistant",
+    "Voice agent knowledge base",
+    "RAG / vector database ingestion",
+    "Digital services and website support assistant"
+  ]
+}
