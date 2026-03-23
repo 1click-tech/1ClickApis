@@ -44,6 +44,8 @@ const createAuditTemplate = (websiteUrl) => ({
     page_speed: {
       mobile: {
         score: "na",
+        raw_score: "na",
+        score_out_of: 10,
         status: "na",
         metrics: {
           load_time: "na",
@@ -56,6 +58,8 @@ const createAuditTemplate = (websiteUrl) => ({
       },
       desktop: {
         score: "na",
+        raw_score: "na",
+        score_out_of: 10,
         status: "na",
         metrics: {
           load_time: "na",
@@ -457,10 +461,11 @@ const normalizePageSpeedReport = (report, strategy) => {
   const lighthouseResult = report?.lighthouseResult || {};
   const audits = lighthouseResult.audits || {};
   const performanceScore = lighthouseResult.categories?.performance?.score;
-  const score =
+  const rawScore =
     typeof performanceScore === "number"
       ? Math.round(performanceScore * 100)
       : "na";
+  const score = normalizeTenPointScore(rawScore);
   const status =
     report?.loadingExperience?.overall_category &&
     report.loadingExperience.overall_category !== "NONE"
@@ -468,8 +473,9 @@ const normalizePageSpeedReport = (report, strategy) => {
           FAST: "fast",
           AVERAGE: "moderate",
           SLOW: "slow"
-        }[report.loadingExperience.overall_category] || mapPerformanceScoreToStatus(score)
-      : mapPerformanceScoreToStatus(score);
+        }[report.loadingExperience.overall_category] ||
+        mapPerformanceScoreToStatus(rawScore)
+      : mapPerformanceScoreToStatus(rawScore);
 
   const inpPercentile = getCruxMetricValue(report, [
     "INTERACTION_TO_NEXT_PAINT",
@@ -483,6 +489,8 @@ const normalizePageSpeedReport = (report, strategy) => {
   return {
     strategy,
     score,
+    raw_score: rawScore,
+    score_out_of: 10,
     status,
     metrics: {
       load_time:
@@ -788,11 +796,15 @@ const sanitizeNaValues = (value) => {
     return value;
   }
 
-  const normalized = value.trim().toLowerCase();
+  const trimmed = value.trim();
+  const normalized = trimmed.toLowerCase();
   const naLikeValues = new Set([
     "",
     "n/a",
     "na",
+    "nan",
+    "null",
+    "undefined",
     "not available",
     "unavailable",
     "unknown",
@@ -800,7 +812,232 @@ const sanitizeNaValues = (value) => {
     "cannot verify"
   ]);
 
-  return naLikeValues.has(normalized) ? "na" : value;
+  if (naLikeValues.has(normalized)) {
+    return "na";
+  }
+
+  if (/^[+-]?\d+(\.\d+)?$/.test(trimmed)) {
+    const numericValue = Number(trimmed);
+    return Number.isFinite(numericValue) ? numericValue : "na";
+  }
+
+  return value;
+};
+
+const isNumericScore = (value) =>
+  typeof value === "number" && Number.isFinite(value);
+
+const clampScore = (value, min = 0, max = 10) => {
+  if (!isNumericScore(value)) return "na";
+  return Math.max(min, Math.min(max, value));
+};
+
+const normalizeTenPointScore = (value, decimals = 1) => {
+  if (!isNumericScore(value)) return "na";
+
+  const normalizedValue =
+    value <= 10 ? value : value <= 100 ? value / 10 : (value / 100) * 10;
+
+  return clampScore(Number(normalizedValue.toFixed(decimals)));
+};
+
+const averageScores = (scores, decimals = 1) => {
+  const validScores = scores.filter((score) => isNumericScore(score));
+  if (!validScores.length) return "na";
+
+  const average =
+    validScores.reduce((sum, score) => sum + score, 0) / validScores.length;
+
+  return Number(average.toFixed(decimals));
+};
+
+const inferBusinessName = (evidence) => {
+  if (!evidence) return "na";
+
+  if (typeof evidence.title === "string" && evidence.title !== "na") {
+    const cleaned = evidence.title.split("|")[0].split("-")[0].trim();
+    if (cleaned) return cleaned;
+  }
+
+  try {
+    const hostname = new URL(evidence.final_url || evidence.website_url).hostname;
+    return hostname.replace(/^www\./i, "");
+  } catch {
+    return "na";
+  }
+};
+
+const computeSeoEvidenceScore = (evidence) => {
+  if (!evidence) return "na";
+
+  let points = 0;
+  let checks = 0;
+
+  checks += 1;
+  if (typeof evidence.title === "string" && evidence.title !== "na") points += 1;
+
+  checks += 1;
+  if (
+    typeof evidence.meta_description === "string" &&
+    evidence.meta_description !== "na"
+  ) {
+    points += 1;
+  }
+
+  checks += 1;
+  if (Array.isArray(evidence.h1_tags) && evidence.h1_tags.length > 0) points += 1;
+
+  checks += 1;
+  if (Array.isArray(evidence.h2_tags) && evidence.h2_tags.length > 0) points += 1;
+
+  checks += 1;
+  if (
+    isNumericScore(evidence.image_alt_stats?.total_images) &&
+    isNumericScore(evidence.image_alt_stats?.images_missing_alt)
+  ) {
+    const total = evidence.image_alt_stats.total_images;
+    const missing = evidence.image_alt_stats.images_missing_alt;
+    if (total === 0 || missing / total <= 0.3) points += 1;
+  }
+
+  checks += 1;
+  if (isNumericScore(evidence.internal_link_count) && evidence.internal_link_count > 0) {
+    points += 1;
+  }
+
+  if (!checks) return "na";
+  return clampScore(Number(((points / checks) * 10).toFixed(1)));
+};
+
+const computeTechnicalEvidenceScore = (evidence) => {
+  if (!evidence) return "na";
+
+  let points = 0;
+  let checks = 0;
+
+  checks += 1;
+  if (evidence.https_enabled === true) points += 1;
+
+  checks += 1;
+  if (evidence.robots_txt === "present") points += 1;
+
+  checks += 1;
+  if (evidence.sitemap === "present") points += 1;
+
+  checks += 1;
+  if (evidence.viewport_meta_present === true) points += 1;
+
+  if (!checks) return "na";
+  return clampScore(Number(((points / checks) * 10).toFixed(1)));
+};
+
+const computeUiUxEvidenceScore = (evidence) => {
+  if (!evidence) return "na";
+
+  let points = 0;
+  let checks = 0;
+
+  checks += 1;
+  if (evidence.viewport_meta_present === true) points += 1;
+
+  checks += 1;
+  if (Array.isArray(evidence.cta_texts) && evidence.cta_texts.length > 0) points += 1;
+
+  checks += 1;
+  if (
+    evidence.important_page_hints?.about_page_linked === true ||
+    evidence.important_page_hints?.contact_page_linked === true
+  ) {
+    points += 1;
+  }
+
+  checks += 1;
+  if (
+    typeof evidence.body_text_sample === "string" &&
+    evidence.body_text_sample !== "na" &&
+    evidence.body_text_sample.length >= 150
+  ) {
+    points += 1;
+  }
+
+  if (!checks) return "na";
+  return clampScore(Number(((points / checks) * 10).toFixed(1)));
+};
+
+const applyComputedWebsiteScores = (merged, evidence) => {
+  const websiteAudit = merged.website_audit;
+  if (!websiteAudit) return merged;
+
+  const mobileSpeedScore = normalizeTenPointScore(
+    websiteAudit.page_speed?.mobile?.score
+  );
+  const desktopSpeedScore = normalizeTenPointScore(
+    websiteAudit.page_speed?.desktop?.score
+  );
+  const speedScore10 = averageScores([mobileSpeedScore, desktopSpeedScore], 1);
+
+  if (!isNumericScore(websiteAudit.seo_report?.seo_score)) {
+    websiteAudit.seo_report.seo_score = computeSeoEvidenceScore(evidence);
+  }
+
+  if (!isNumericScore(websiteAudit.technical_seo?.technical_score)) {
+    websiteAudit.technical_seo.technical_score = computeTechnicalEvidenceScore(evidence);
+  }
+
+  if (!isNumericScore(websiteAudit.ui_ux_audit?.ui_ux_score)) {
+    websiteAudit.ui_ux_audit.ui_ux_score = computeUiUxEvidenceScore(evidence);
+  }
+
+  websiteAudit.final_website_score.breakdown = {
+    speed: speedScore10,
+    seo: websiteAudit.seo_report?.seo_score ?? "na",
+    technical: websiteAudit.technical_seo?.technical_score ?? "na",
+    ui_ux: websiteAudit.ui_ux_audit?.ui_ux_score ?? "na"
+  };
+
+  const overallScore = averageScores(
+    Object.values(websiteAudit.final_website_score.breakdown),
+    1
+  );
+
+  websiteAudit.final_website_score.overall_score = overallScore;
+
+  if (!isNumericScore(merged.ai_readiness?.readiness_score)) {
+    merged.ai_readiness.readiness_score = overallScore;
+  }
+
+  if (merged.ai_readiness?.status === "na") {
+    merged.ai_readiness.status =
+      overallScore === "na"
+        ? "na"
+        : overallScore >= 8
+        ? "high"
+        : overallScore >= 5
+        ? "moderate"
+        : "low";
+  }
+
+  if (merged.final_summary?.overall_business_health === "na") {
+    merged.final_summary.overall_business_health =
+      overallScore === "na"
+        ? "na"
+        : overallScore >= 8
+        ? "strong"
+        : overallScore >= 5
+        ? "average"
+        : "weak";
+  }
+
+  if (
+    websiteAudit.final_website_score.issue_summary === "na" &&
+    Array.isArray(websiteAudit.technical_seo?.indexing_issues) &&
+    websiteAudit.technical_seo.indexing_issues.length
+  ) {
+    websiteAudit.final_website_score.issue_summary =
+      websiteAudit.technical_seo.indexing_issues.join(", ");
+  }
+
+  return merged;
 };
 
 const applyTechnicalSeoEvidence = (merged, evidence) => {
@@ -853,7 +1090,9 @@ const applyPageSpeedEvidence = (merged, pageSpeedInsights) => {
 
     pageSpeed[strategy] = {
       ...pageSpeed[strategy],
-      score: report.score,
+      score: normalizeTenPointScore(report.score),
+      raw_score: report.raw_score ?? "na",
+      score_out_of: report.score_out_of ?? 10,
       status: report.status,
       metrics: {
         load_time: report.metrics?.load_time || "na",
@@ -873,16 +1112,22 @@ const applyPageSpeedEvidence = (merged, pageSpeedInsights) => {
 
 const normalizeAuditPayload = (payload, websiteUrl, evidence) => {
   const template = createAuditTemplate(websiteUrl);
-  const merged = applyPageSpeedEvidence(
-    applyTechnicalSeoEvidence(
-      sanitizeNaValues(mergeWithTemplate(template, payload)),
-      evidence
+  const merged = applyComputedWebsiteScores(
+    applyPageSpeedEvidence(
+      applyTechnicalSeoEvidence(
+        sanitizeNaValues(mergeWithTemplate(template, payload)),
+        evidence
+      ),
+      evidence?.page_speed_insights
     ),
-    evidence?.page_speed_insights
+    evidence
   );
 
   merged.input.website_url = websiteUrl;
   merged.input.audit_timestamp = moment().toISOString();
+  if (merged.input.business_name === "na") {
+    merged.input.business_name = inferBusinessName(evidence);
+  }
 
   return merged;
 };
