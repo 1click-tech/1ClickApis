@@ -964,6 +964,57 @@ const computeUiUxEvidenceScore = (evidence) => {
   return clampScore(Number(((points / checks) * 10).toFixed(1)));
 };
 
+const applyUiUxEvidence = (merged, evidence) => {
+  const uiUxAudit = merged.website_audit?.ui_ux_audit;
+
+  if (!uiUxAudit || !evidence) {
+    return merged;
+  }
+
+  if (uiUxAudit.mobile_responsiveness === "na") {
+    uiUxAudit.mobile_responsiveness =
+      evidence.viewport_meta_present === true
+        ? "responsive"
+        : evidence.viewport_meta_present === false
+        ? "not responsive"
+        : "na";
+  }
+
+  if (uiUxAudit.cta_visibility === "na") {
+    uiUxAudit.cta_visibility =
+      Array.isArray(evidence.cta_texts) && evidence.cta_texts.length > 0
+        ? "visible"
+        : "not found";
+  }
+
+  if (uiUxAudit.readability === "na") {
+    uiUxAudit.readability =
+      typeof evidence.body_text_sample === "string" &&
+      evidence.body_text_sample !== "na" &&
+      evidence.body_text_sample.length >= 150
+        ? "good"
+        : typeof evidence.body_text_sample === "string" &&
+          evidence.body_text_sample !== "na"
+        ? "needs improvement"
+        : "na";
+  }
+
+  if (uiUxAudit.navigation_clarity === "na") {
+    uiUxAudit.navigation_clarity =
+      evidence.important_page_hints?.about_page_linked === true ||
+      evidence.important_page_hints?.contact_page_linked === true ||
+      evidence.important_page_hints?.services_page_linked === true
+        ? "clear"
+        : "needs improvement";
+  }
+
+  if (uiUxAudit.popup_issues === "na") {
+    uiUxAudit.popup_issues = "na";
+  }
+
+  return merged;
+};
+
 const applyComputedWebsiteScores = (merged, evidence) => {
   const websiteAudit = merged.website_audit;
   if (!websiteAudit) return merged;
@@ -1114,8 +1165,11 @@ const normalizeAuditPayload = (payload, websiteUrl, evidence) => {
   const template = createAuditTemplate(websiteUrl);
   const merged = applyComputedWebsiteScores(
     applyPageSpeedEvidence(
-      applyTechnicalSeoEvidence(
-        sanitizeNaValues(mergeWithTemplate(template, payload)),
+      applyUiUxEvidence(
+        applyTechnicalSeoEvidence(
+          sanitizeNaValues(mergeWithTemplate(template, payload)),
+          evidence
+        ),
         evidence
       ),
       evidence?.page_speed_insights
