@@ -824,6 +824,36 @@ const sanitizeNaValues = (value) => {
   return value;
 };
 
+const normalizeSocialMediaAuditDisplay = (audit) => {
+  const socialAudit = audit?.social_media_audit;
+
+  if (!socialAudit) {
+    return audit;
+  }
+
+  if (socialAudit.platform_presence && typeof socialAudit.platform_presence === "object") {
+    for (const [platform, value] of Object.entries(socialAudit.platform_presence)) {
+      if (value === "na") {
+        socialAudit.platform_presence[platform] = "";
+      }
+    }
+  }
+
+  if (socialAudit.posting_frequency && typeof socialAudit.posting_frequency === "object") {
+    for (const [platform, value] of Object.entries(socialAudit.posting_frequency)) {
+      if (value === "na") {
+        socialAudit.posting_frequency[platform] = "";
+      }
+    }
+  }
+
+  if (socialAudit.final_social_score?.score === "na") {
+    socialAudit.final_social_score.score = null;
+  }
+
+  return audit;
+};
+
 const isNumericScore = (value) =>
   typeof value === "number" && Number.isFinite(value);
 
@@ -1167,7 +1197,9 @@ const normalizeAuditPayload = (payload, websiteUrl, evidence) => {
     applyPageSpeedEvidence(
       applyUiUxEvidence(
         applyTechnicalSeoEvidence(
-          sanitizeNaValues(mergeWithTemplate(template, payload)),
+          normalizeSocialMediaAuditDisplay(
+            sanitizeNaValues(mergeWithTemplate(template, payload))
+          ),
           evidence
         ),
         evidence
