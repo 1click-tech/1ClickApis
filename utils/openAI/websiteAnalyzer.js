@@ -8,20 +8,24 @@ const axios = require("axios");
 
 const router = express.Router();
 
+const HTTP_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+};
+const PAGESPEED_API_URL =
+  "https://pagespeedonline.googleapis.com/pagespeedonline/v5/runPagespeed";
+
 const normalizeWebsiteUrl = (input) => {
   if (!input || typeof input !== "string") return null;
 
   let url = input.trim().toLowerCase();
 
-  // Remove trailing slash
   url = url.replace(/\/+$/, "");
 
-  // Add https if missing
   if (!url.startsWith("http://") && !url.startsWith("https://")) {
     url = `https://${url}`;
   }
 
-  // Basic domain validation
   try {
     new URL(url);
     return url;
@@ -29,411 +33,669 @@ const normalizeWebsiteUrl = (input) => {
     return null;
   }
 };
-const seoWebsiteAuditJSON = async (websiteUrl) => {
 
-const systemPrompt = `
-You are an AI-Powered Digital Audit Agent designed to generate an Instant Website, Social Media, GMB, and AI Readiness Audit.
-
-CORE BUSINESS LOGIC:
-User provides a URL → you identify problems → explain business loss → suggest fixes → generate an auto-structured audit report with scores and action plans.
-
-You must behave like a professional auditor, strategist, and AI consultant combined.
-
-────────────────────────
-GLOBAL RULES (STRICT)
-────────────────────────
-- Analyze using ONLY publicly accessible information.
-- Allowed sources:
-  - Website pages
-  - Header and footer links
-  - About, Contact, Services, Legal pages
-  - robots.txt
-  - sitemap.xml or sitemap index
-  - Publicly visible social media profiles
-  - Public Google Business Profile data
-- Do NOT assume access to analytics tools, paid SEO tools, backend systems, or private dashboards.
-- Do NOT fabricate traffic, rankings, revenue, or exact performance metrics.
-- If something cannot be verified, clearly mark it as missing, unknown, inactive, or not found.
-- Use simple, non-technical language suitable for business owners.
-- Focus on problems, business impact, and solutions.
-- Return ONLY valid JSON.
-- Follow the exact JSON schema provided.
-- Do NOT include markdown, explanations, or extra keys.
-
-────────────────────────
-WEBSITE AUDIT RULES
-────────────────────────
-
-Website Audit Flow:
-- User pastes website URL
-- Simulate a short scan (5–15 seconds)
-- Generate a detailed audit report
-- Include issue descriptions and AI suggestions
-- End with a final score and priority action plan
-
-Page Speed Analysis:
-- Analyze mobile and desktop separately
-- Classify speed as fast, moderate, or slow
-- Include observable indicators such as heavy images, scripts, layout shifts
-- Provide AI suggestions like image compression, JS/CSS cleanup, hosting upgrade
-
-SEO Analysis:
-- Check on-page SEO issues:
-  - Meta titles
-  - Meta descriptions
-  - Heading structure (H1/H2)
-  - Keyword usage
-  - Image ALT attributes
-  - Internal linking
-- Report issues clearly
-- Provide keyword-focused AI fix suggestions
-
-Technical SEO Analysis:
-- Check:
-  - SSL / HTTPS
-  - Sitemap presence
-  - Robots.txt presence
-  - Broken internal links
-  - Mobile friendliness
-  - Indexing accessibility
-- Summarize technical risks
-- Provide corrective AI suggestions
-
-UI / UX Analysis:
-- Analyze:
-  - Mobile responsiveness
-  - CTA visibility
-  - Font size and readability
-  - Navigation clarity
-  - Popups and clutter
-- Provide AI feedback in clear language
-
-Final Website Score:
-- Score range: 0–10
-- Include score breakdown:
-  - Speed
-  - SEO
-  - Technical
-  - UI/UX
-- Provide priority action plan:
-  - High
-  - Medium
-  - Low
-
-────────────────────────
-SOCIAL MEDIA AUDIT RULES
-────────────────────────
-
-Input:
-- Website URL or social handle
-
-You must automatically discover related social profiles.
-
-Platforms to analyze:
-- Instagram
-- Facebook
-- LinkedIn
-- X (Twitter)
-- YouTube
-
-Platform Presence:
-- Mark platforms as active, inactive, or missing
-
-Profile Optimization:
-- Analyze bio clarity, niche clarity, keyword usage, CTA presence
-- Detect missing links
-- Generate an AI-suggested optimized bio if weak
-
-Posting Frequency:
-- Analyze last 30 days activity where visible
-- Identify consistency issues
-
-Engagement Analysis:
-- Qualitatively analyze likes, comments, interaction patterns
-- Detect one-way or overly promotional content
-- Identify engagement problems
-
-Content Strategy Gap:
-- Analyze content mix:
-  - Educational
-  - Problem-solving
-  - Trust-building
-  - Sales CTA
-- Suggest ideal content ratio
-
-Final Social Media Score:
-- Score range: 0–100
-- Include breakdown:
-  - Profile optimization
-  - Consistency
-  - Engagement
-  - Content quality
-  - Platform presence
-- Provide priority fixes and a 30-day growth plan
-
-────────────────────────
-GMB AUDIT RULES
-────────────────────────
-
-Input:
-- Business name OR
-- Google Maps link OR
-- Website URL
-
-Analyze only publicly available Google Business Profile data.
-
-Verification Audit:
-- Verification status
-- Duplicate listings
-
-Business Category Audit:
-- Primary category accuracy
-- Secondary categories
-- Competitor alignment (qualitative)
-
-Reviews & Rating Audit:
-- Average rating
-- Total reviews
-- Review freshness
-- Reply ratio
-
-Photos & Business Details:
-- Logo and cover photo
-- Number of photos
-- Business description
-- Working hours
-- Contact details
-
-Map & Location Accuracy:
-- Pin placement
-- NAP consistency
-- Service area definition
-
-Final GMB Score:
-- Score range: 0–100
-- Include breakdown:
-  - Verification
-  - Category accuracy
-  - Reviews & trust
-  - Profile completeness
-  - Map accuracy
-- Provide issue summary and step-by-step AI action plan
-- Mention expected impact timeline (30–45 days)
-
-────────────────────────
-AI READINESS RULES
-────────────────────────
-
-Determine AI readiness based on overall audit performance.
-
-Classification:
-- Score < 7 → not_ready
-- Score 7–8 → moderately_ready
-- Score ≥ 9 → ai_ready
-
-Identify blocking factors and improvement steps.
-────────────────────────
-JSON RESPONSE SCHEMA (MANDATORY)
-────────────────────────
-{
-  "input": {
-    "website_url": "",
-    "business_name": "",
-    "audit_timestamp": ""
+const createAuditTemplate = (websiteUrl) => ({
+  input: {
+    website_url: websiteUrl,
+    business_name: "na",
+    audit_timestamp: "na"
   },
-  "website_audit": {
-    "page_speed": {
-      "mobile": {
-        "score": 0,
-        "status": "fast | moderate | slow",
-        "metrics": {
-          "load_time": "",
-          "lcp": "",
-          "cls": "",
-          "inp_fid": ""
+  website_audit: {
+    page_speed: {
+      mobile: {
+        score: "na",
+        status: "na",
+        metrics: {
+          load_time: "na",
+          lcp: "na",
+          cls: "na",
+          inp_fid: "na"
         },
-        "issues": [],
-        "ai_suggestions": []
+        issues: [],
+        ai_suggestions: []
       },
-      "desktop": {
-        "score": 0,
-        "status": "fast | moderate | slow",
-        "metrics": {
-          "load_time": "",
-          "lcp": "",
-          "cls": "",
-          "inp_fid": ""
+      desktop: {
+        score: "na",
+        status: "na",
+        metrics: {
+          load_time: "na",
+          lcp: "na",
+          cls: "na",
+          inp_fid: "na"
         },
-        "issues": [],
-        "ai_suggestions": []
+        issues: [],
+        ai_suggestions: []
       }
     },
-    "seo_report": {
-      "on_page_issues": {
-        "meta_title": [],
-        "meta_description": [],
-        "heading_structure": [],
-        "keyword_issues": [],
-        "image_alt_issues": [],
-        "internal_linking_issues": []
+    seo_report: {
+      on_page_issues: {
+        meta_title: [],
+        meta_description: [],
+        heading_structure: [],
+        keyword_issues: [],
+        image_alt_issues: [],
+        internal_linking_issues: []
       },
-      "seo_score": 0,
-      "ai_fix_suggestions": []
+      seo_score: "na",
+      ai_fix_suggestions: []
     },
-    "technical_seo": {
-      "ssl_status": "valid | invalid | missing",
-      "sitemap": "present | missing",
-      "robots_txt": "present | missing",
-      "broken_links_count": 0,
-      "mobile_friendly": "yes | no | unknown",
-      "indexing_issues": [],
-      "technical_score": 0,
-      "ai_suggestions": []
+    technical_seo: {
+      ssl_status: "missing",
+      sitemap: "missing",
+      robots_txt: "missing",
+      broken_links_count: "na",
+      mobile_friendly: "missing",
+      indexing_issues: [],
+      technical_score: "na",
+      ai_suggestions: []
     },
-    "ui_ux_audit": {
-      "mobile_responsiveness": "good | average | poor",
-      "cta_visibility": "good | poor",
-      "readability": "good | average | poor",
-      "navigation_clarity": "clear | confusing",
-      "popup_issues": "none | excessive",
-      "ui_ux_score": 0,
-      "ai_feedback": []
+    ui_ux_audit: {
+      mobile_responsiveness: "na",
+      cta_visibility: "na",
+      readability: "na",
+      navigation_clarity: "na",
+      popup_issues: "na",
+      ui_ux_score: "na",
+      ai_feedback: []
     },
-    "final_website_score": {
-      "overall_score": 0,
-      "score_out_of": 10,
-      "breakdown": {
-        "speed": 0,
-        "seo": 0,
-        "technical": 0,
-        "ui_ux": 0
+    final_website_score: {
+      overall_score: "na",
+      score_out_of: 10,
+      breakdown: {
+        speed: "na",
+        seo: "na",
+        technical: "na",
+        ui_ux: "na"
       },
-      "issue_summary": "",
-      "priority_action_plan": {
-        "high_priority": [],
-        "medium_priority": [],
-        "low_priority": []
+      issue_summary: "na",
+      priority_action_plan: {
+        high_priority: [],
+        medium_priority: [],
+        low_priority: []
       }
     }
   },
-  "social_media_audit": {
-    "platform_presence": {
-      "instagram": "active | inactive | missing",
-      "facebook": "active | inactive | missing",
-      "linkedin": "active | inactive | missing",
-      "twitter_x": "active | inactive | missing",
-      "youtube": "active | inactive | missing"
+  social_media_audit: {
+    platform_presence: {
+      instagram: "na",
+      facebook: "na",
+      linkedin: "na",
+      twitter_x: "na",
+      youtube: "na"
     },
-    "profile_optimization": {
-      "bio_clarity": "good | average | poor",
-      "cta_present": true,
-      "link_in_bio": true,
-      "issues": [],
-      "ai_suggested_bio": ""
+    profile_optimization: {
+      bio_clarity: "na",
+      cta_present: "na",
+      link_in_bio: "na",
+      issues: [],
+      ai_suggested_bio: "na"
     },
-    "posting_frequency": {
-      "instagram": "",
-      "facebook": "",
-      "linkedin": "",
-      "twitter_x": "",
-      "youtube": ""
+    posting_frequency: {
+      instagram: "na",
+      facebook: "na",
+      linkedin: "na",
+      twitter_x: "na",
+      youtube: "na"
     },
-    "engagement_analysis": {
-      "engagement_level": "high | medium | low",
-      "common_issues": [],
-      "ai_insights": []
+    engagement_analysis: {
+      engagement_level: "na",
+      common_issues: [],
+      ai_insights: []
     },
-    "content_strategy_gap": {
-      "educational": "strong | weak | missing",
-      "problem_solving": "strong | weak | missing",
-      "trust_building": "strong | weak | missing",
-      "sales_cta": "strong | weak | missing",
-      "ai_suggestions": []
+    content_strategy_gap: {
+      educational: "na",
+      problem_solving: "na",
+      trust_building: "na",
+      sales_cta: "na",
+      ai_suggestions: []
     },
-    "final_social_score": {
-      "score": 0,
-      "score_out_of": 100,
-      "breakdown": {
-        "profile_optimization": 0,
-        "consistency": 0,
-        "engagement": 0,
-        "content_quality": 0,
-        "platform_presence": 0
+    final_social_score: {
+      score: "na",
+      score_out_of: 100,
+      breakdown: {
+        profile_optimization: "na",
+        consistency: "na",
+        engagement: "na",
+        content_quality: "na",
+        platform_presence: "na"
       },
-      "priority_fixes": [],
-      "growth_plan_30_days": []
+      priority_fixes: [],
+      growth_plan_30_days: []
     }
   },
-  "gmb_audit": {
-    "verification_status": "verified | not_verified | unknown",
-    "duplicate_listing": true,
-    "business_category": {
-      "primary": "",
-      "secondary": [],
-      "category_accuracy": "correct | incorrect"
+  gmb_audit: {
+    verification_status: "na",
+    duplicate_listing: "na",
+    business_category: {
+      primary: "na",
+      secondary: [],
+      category_accuracy: "na"
     },
-    "reviews_audit": {
-      "average_rating": 0,
-      "total_reviews": 0,
-      "review_freshness": "active | inactive",
-      "reply_ratio": "good | poor"
+    reviews_audit: {
+      average_rating: "na",
+      total_reviews: "na",
+      review_freshness: "na",
+      reply_ratio: "na"
     },
-    "photos_and_details": {
-      "total_photos": 0,
-      "cover_photo": true,
-      "business_description": true,
-      "working_hours": true,
-      "contact_details": true
+    photos_and_details: {
+      total_photos: "na",
+      cover_photo: "na",
+      business_description: "na",
+      working_hours: "na",
+      contact_details: "na"
     },
-    "map_accuracy": {
-      "pin_accuracy": "correct | incorrect",
-      "nap_consistency": "consistent | inconsistent",
-      "service_area_defined": true
+    map_accuracy: {
+      pin_accuracy: "na",
+      nap_consistency: "na",
+      service_area_defined: "na"
     },
-    "final_gmb_score": {
-      "score": 0,
-      "score_out_of": 100,
-      "breakdown": {
-        "verification": 0,
-        "category_accuracy": 0,
-        "reviews_trust": 0,
-        "profile_completeness": 0,
-        "map_accuracy": 0
+    final_gmb_score: {
+      score: "na",
+      score_out_of: 100,
+      breakdown: {
+        verification: "na",
+        category_accuracy: "na",
+        reviews_trust: "na",
+        profile_completeness: "na",
+        map_accuracy: "na"
       },
-      "issue_summary": "",
-      "ai_action_plan": []
+      issue_summary: "na",
+      ai_action_plan: []
     }
   },
-  "ai_readiness": {
-    "readiness_score": 0,
-    "status": "not_ready | moderately_ready | ai_ready",
-    "blocking_factors": [],
-    "improvement_steps": []
+  ai_readiness: {
+    readiness_score: "na",
+    status: "na",
+    blocking_factors: [],
+    improvement_steps: []
   },
-  "final_summary": {
-    "overall_business_health": "weak | average | strong",
-    "biggest_risks": [],
-    "biggest_opportunities": [],
-    "next_steps": [
+  final_summary: {
+    overall_business_health: "na",
+    biggest_risks: [],
+    biggest_opportunities: [],
+    next_steps: [
       "fix_with_ai",
       "connect_with_expert",
       "schedule_appointment",
       "chat_with_ai_genie"
     ]
   }
-}
+});
 
-────────────────────────
-FINAL OUTPUT
-────────────────────────
+const decodeHtmlEntities = (value = "") =>
+  value
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&apos;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">");
 
-You MUST return ONLY a JSON object that strictly follows the predefined response schema.
+const stripHtml = (value = "") =>
+  decodeHtmlEntities(
+    value
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+  )
+    .replace(/\s+/g, " ")
+    .trim();
 
-Do NOT add comments, explanations, or extra keys.
+const unique = (items) => [...new Set(items.filter(Boolean))];
 
-Your role is to identify problems, explain potential business loss, and guide the user toward improvement using AI-driven insights and clear action plans.
-`.trim();
+const buildAbsoluteUrl = (baseUrl, rawUrl) => {
+  if (!rawUrl || /^#|^mailto:|^tel:|^javascript:/i.test(rawUrl)) {
+    return null;
+  }
 
+  try {
+    return new URL(rawUrl, baseUrl).toString();
+  } catch {
+    return null;
+  }
+};
+
+const getFirstMatch = (text, regex) => {
+  const match = text.match(regex);
+  return match?.[1] ? stripHtml(match[1]) : null;
+};
+
+const getMetaContent = (html, attribute, value) => {
+  const patterns = [
+    new RegExp(
+      `<meta[^>]*${attribute}=["']${value}["'][^>]*content=["']([^"']*)["'][^>]*>`,
+      "i"
+    ),
+    new RegExp(
+      `<meta[^>]*content=["']([^"']*)["'][^>]*${attribute}=["']${value}["'][^>]*>`,
+      "i"
+    )
+  ];
+
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match?.[1]) return stripHtml(match[1]);
+  }
+
+  return null;
+};
+
+const getTagTexts = (html, tagName, limit = 10) => {
+  const regex = new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)<\\/${tagName}>`, "gi");
+  const matches = [];
+  let match;
+
+  while ((match = regex.exec(html)) !== null && matches.length < limit) {
+    const text = stripHtml(match[1]);
+    if (text) matches.push(text);
+  }
+
+  return matches;
+};
+
+const getAnchorData = (html, baseUrl) => {
+  const regex = /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  const anchors = [];
+  let match;
+
+  while ((match = regex.exec(html)) !== null) {
+    anchors.push({
+      href: buildAbsoluteUrl(baseUrl, match[1]),
+      text: stripHtml(match[2])
+    });
+  }
+
+  return anchors.filter((anchor) => anchor.href);
+};
+
+const getImageAltStats = (html) => {
+  if (!html) {
+    return {
+      total_images: "na",
+      images_missing_alt: "na"
+    };
+  }
+
+  const images = html.match(/<img\b[\s\S]*?>/gi) || [];
+  let missingAltCount = 0;
+
+  for (const image of images) {
+    const altMatch = image.match(/\balt=["']([^"']*)["']/i);
+    if (!altMatch || !altMatch[1].trim()) {
+      missingAltCount += 1;
+    }
+  }
+
+  return {
+    total_images: images.length,
+    images_missing_alt: missingAltCount
+  };
+};
+
+const fetchUrl = async (url) => {
+  try {
+    const response = await axios.get(url, {
+      headers: HTTP_HEADERS,
+      timeout: 15000,
+      maxRedirects: 5,
+      validateStatus: () => true
+    });
+
+    return {
+      ok: response.status >= 200 && response.status < 400,
+      status: response.status,
+      url: response.request?.res?.responseUrl || url,
+      data: typeof response.data === "string" ? response.data : ""
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: "na",
+      url,
+      data: "",
+      error: error.message
+    };
+  }
+};
+
+const getPageSpeedApiKey = () =>
+  process.env.PAGESPEED_API_KEY ||
+  process.env.GOOGLE_PAGESPEED_API_KEY ||
+  process.env.GOOGLE_API_KEY ||
+  null;
+
+const buildPageSpeedRequestUrl = (websiteUrl, strategy) => {
+  const params = new URLSearchParams({
+    url: websiteUrl,
+    strategy,
+    category: "performance",
+    locale: "en_US"
+  });
+
+  const apiKey = getPageSpeedApiKey();
+  if (apiKey) {
+    params.set("key", apiKey);
+  }
+
+  return `${PAGESPEED_API_URL}?${params.toString()}`;
+};
+
+const mapPerformanceScoreToStatus = (score) => {
+  if (typeof score !== "number") return "na";
+  if (score >= 90) return "fast";
+  if (score >= 50) return "moderate";
+  return "slow";
+};
+
+const getAuditDisplayValue = (audits, auditIds) => {
+  for (const auditId of auditIds) {
+    const audit = audits?.[auditId];
+    if (audit?.displayValue) return audit.displayValue;
+  }
+
+  return null;
+};
+
+const getCruxMetricValue = (report, metricKeys) => {
+  const metricSources = [
+    report?.loadingExperience?.metrics,
+    report?.originLoadingExperience?.metrics
+  ];
+
+  for (const metrics of metricSources) {
+    for (const metricKey of metricKeys) {
+      const percentile = metrics?.[metricKey]?.percentile;
+      if (typeof percentile === "number") {
+        return percentile;
+      }
+    }
+  }
+
+  return null;
+};
+
+const formatMilliseconds = (value) => {
+  if (typeof value !== "number") return "na";
+  if (value >= 1000) return `${(value / 1000).toFixed(1)} s`;
+  return `${Math.round(value)} ms`;
+};
+
+const formatClsValue = (value) => {
+  if (typeof value !== "number") return "na";
+  return `${(value / 100).toFixed(2)}`;
+};
+
+const getAuditIssuesAndSuggestions = (audits = {}) => {
+  const candidateAudits = Object.values(audits)
+    .filter(
+      (audit) =>
+        audit &&
+        typeof audit.score === "number" &&
+        audit.score < 0.9 &&
+        !["notApplicable", "manual", "informative", "error"].includes(
+          audit.scoreDisplayMode
+        )
+    )
+    .sort((a, b) => {
+      const savingsA = a.details?.overallSavingsMs || 0;
+      const savingsB = b.details?.overallSavingsMs || 0;
+      return savingsB - savingsA || a.score - b.score;
+    })
+    .slice(0, 5);
+
+  return {
+    issues: candidateAudits.map((audit) =>
+      audit.displayValue ? `${audit.title} (${audit.displayValue})` : audit.title
+    ),
+    ai_suggestions: unique(
+      candidateAudits.map((audit) => stripHtml(audit.description || audit.title))
+    )
+  };
+};
+
+const normalizePageSpeedReport = (report, strategy) => {
+  const lighthouseResult = report?.lighthouseResult || {};
+  const audits = lighthouseResult.audits || {};
+  const performanceScore = lighthouseResult.categories?.performance?.score;
+  const score =
+    typeof performanceScore === "number"
+      ? Math.round(performanceScore * 100)
+      : "na";
+  const status =
+    report?.loadingExperience?.overall_category &&
+    report.loadingExperience.overall_category !== "NONE"
+      ? {
+          FAST: "fast",
+          AVERAGE: "moderate",
+          SLOW: "slow"
+        }[report.loadingExperience.overall_category] || mapPerformanceScoreToStatus(score)
+      : mapPerformanceScoreToStatus(score);
+
+  const inpPercentile = getCruxMetricValue(report, [
+    "INTERACTION_TO_NEXT_PAINT",
+    "FIRST_INPUT_DELAY_MS"
+  ]);
+  const clsPercentile = getCruxMetricValue(report, [
+    "CUMULATIVE_LAYOUT_SHIFT_SCORE"
+  ]);
+  const { issues, ai_suggestions } = getAuditIssuesAndSuggestions(audits);
+
+  return {
+    strategy,
+    score,
+    status,
+    metrics: {
+      load_time:
+        getAuditDisplayValue(audits, ["speed-index", "interactive"]) || "na",
+      lcp:
+        getAuditDisplayValue(audits, ["largest-contentful-paint"]) ||
+        formatMilliseconds(
+          getCruxMetricValue(report, ["LARGEST_CONTENTFUL_PAINT_MS"])
+        ) ||
+        "na",
+      cls:
+        getAuditDisplayValue(audits, ["cumulative-layout-shift"]) ||
+        formatClsValue(clsPercentile) ||
+        "na",
+      inp_fid:
+        getAuditDisplayValue(audits, [
+          "interaction-to-next-paint",
+          "max-potential-fid"
+        ]) ||
+        formatMilliseconds(inpPercentile) ||
+        "na"
+    },
+    issues,
+    ai_suggestions
+  };
+};
+
+const fetchPageSpeedInsight = async (websiteUrl, strategy) => {
+  try {
+    const requestUrl = buildPageSpeedRequestUrl(websiteUrl, strategy);
+
+    const response = await axios.get(requestUrl, {
+      headers: HTTP_HEADERS,
+      timeout: 60000,
+      validateStatus: () => true
+    });
+
+    if (response.status >= 200 && response.status < 300) {
+      return normalizePageSpeedReport(response.data, strategy);
+    }
+
+    console.error("PageSpeed Insights API error:", {
+      strategy,
+      status: response.status,
+      message: response.data?.error?.message || "Unknown PageSpeed API error",
+      has_api_key: Boolean(getPageSpeedApiKey())
+    });
+
+    return {
+      strategy,
+      score: "na",
+      status: "na",
+      metrics: {
+        load_time: "na",
+        lcp: "na",
+        cls: "na",
+        inp_fid: "na"
+      },
+      issues: [],
+      ai_suggestions: [],
+      error: response.data?.error?.message || `PageSpeed status ${response.status}`
+    };
+  } catch (error) {
+    console.error("PageSpeed Insights request failed:", {
+      strategy,
+      message: error.message,
+      code: error.code || "na",
+      has_api_key: Boolean(getPageSpeedApiKey())
+    });
+
+    return {
+      strategy,
+      score: "na",
+      status: "na",
+      metrics: {
+        load_time: "na",
+        lcp: "na",
+        cls: "na",
+        inp_fid: "na"
+      },
+      issues: [],
+      ai_suggestions: [],
+      error: error.message
+    };
+  }
+};
+
+const fetchPageSpeedEvidence = async (websiteUrl) => {
+  const [mobile, desktop] = await Promise.all([
+    fetchPageSpeedInsight(websiteUrl, "mobile"),
+    fetchPageSpeedInsight(websiteUrl, "desktop")
+  ]);
+
+  console.log("PageSpeed summary:", {
+    websiteUrl,
+    mobile: {
+      score: mobile.score,
+      status: mobile.status,
+      error: mobile.error || "na"
+    },
+    desktop: {
+      score: desktop.score,
+      status: desktop.status,
+      error: desktop.error || "na"
+    }
+  });
+
+  return { mobile, desktop };
+};
+
+const fetchWebsiteEvidence = async (websiteUrl) => {
+  const home = await fetchUrl(websiteUrl);
+  const finalUrl = home.url || websiteUrl;
+  const origin = new URL(finalUrl).origin;
+  const html = home.data || "";
+  const hasHtmlEvidence = Boolean(html);
+  const anchors = hasHtmlEvidence ? getAnchorData(html, finalUrl) : [];
+  const sameHostLinks = anchors.filter((anchor) => {
+    try {
+      return new URL(anchor.href).hostname === new URL(finalUrl).hostname;
+    } catch {
+      return false;
+    }
+  });
+
+  const socialProfiles = {};
+  for (const anchor of anchors) {
+    const href = anchor.href.toLowerCase();
+    if (href.includes("instagram.com")) socialProfiles.instagram = anchor.href;
+    if (href.includes("facebook.com")) socialProfiles.facebook = anchor.href;
+    if (href.includes("linkedin.com")) socialProfiles.linkedin = anchor.href;
+    if (href.includes("twitter.com") || href.includes("x.com")) {
+      socialProfiles.twitter_x = anchor.href;
+    }
+    if (href.includes("youtube.com") || href.includes("youtu.be")) {
+      socialProfiles.youtube = anchor.href;
+    }
+  }
+
+  const ctaRegex =
+    /\b(contact|call|book|quote|get started|get in touch|schedule|start|buy|demo|consultation)\b/i;
+  const ctaTexts = unique(
+    [
+      ...anchors.map((anchor) => anchor.text),
+      ...getTagTexts(html, "button", 20)
+    ]
+      .map((text) => text.trim())
+      .filter((text) => ctaRegex.test(text))
+  ).slice(0, 10);
+
+  const robots = await fetchUrl(`${origin}/robots.txt`);
+
+  let sitemapUrl = null;
+  if (robots.ok) {
+    const sitemapMatch = robots.data.match(/^sitemap:\s*(.+)$/im);
+    sitemapUrl = sitemapMatch?.[1]?.trim() || null;
+  }
+
+  const sitemap = await fetchUrl(sitemapUrl || `${origin}/sitemap.xml`);
+
+  return {
+    website_url: websiteUrl,
+    fetch_status: home.status,
+    final_url: finalUrl,
+    https_enabled: finalUrl.startsWith("https://"),
+    title: getFirstMatch(html, /<title[^>]*>([\s\S]*?)<\/title>/i) || "na",
+    meta_description:
+      getMetaContent(html, "name", "description") ||
+      getMetaContent(html, "property", "og:description") ||
+      "na",
+    canonical_url:
+      getFirstMatch(
+        html,
+        /<link[^>]*rel=["']canonical["'][^>]*href=["']([^"']+)["'][^>]*>/i
+      ) || "na",
+    viewport_meta_present: hasHtmlEvidence
+      ? /<meta[^>]*name=["']viewport["']/i.test(html)
+      : "na",
+    language:
+      getFirstMatch(html, /<html[^>]*lang=["']([^"']+)["'][^>]*>/i) || "na",
+    h1_tags: getTagTexts(html, "h1", 5),
+    h2_tags: getTagTexts(html, "h2", 10),
+    internal_link_count: hasHtmlEvidence ? sameHostLinks.length : "na",
+    important_page_hints: {
+      about_page_linked: hasHtmlEvidence
+        ? sameHostLinks.some(
+            (anchor) => /about/i.test(anchor.href) || /about/i.test(anchor.text)
+          )
+        : "na",
+      contact_page_linked: hasHtmlEvidence
+        ? sameHostLinks.some(
+            (anchor) =>
+              /contact/i.test(anchor.href) || /contact/i.test(anchor.text)
+          )
+        : "na",
+      services_page_linked: hasHtmlEvidence
+        ? sameHostLinks.some(
+            (anchor) =>
+              /service/i.test(anchor.href) || /service/i.test(anchor.text)
+          )
+        : "na"
+    },
+    image_alt_stats: getImageAltStats(html),
+    social_profile_links: socialProfiles,
+    cta_texts: ctaTexts,
+    body_text_sample: hasHtmlEvidence ? stripHtml(html).slice(0, 600) : "na",
+    robots_txt: robots.ok ? "present" : "missing",
+    robots_txt_url: robots.ok ? robots.url : "na",
+    sitemap: sitemap.ok ? "present" : "missing",
+    sitemap_url: sitemap.ok ? sitemap.url : "na",
+    fetch_error: home.error || "na"
+  };
+};
 
 const extractTextFromResponse = (resp) => {
   if (resp.data.output_text) return resp.data.output_text;
@@ -455,43 +717,372 @@ const extractTextFromResponse = (resp) => {
   return text || null;
 };
 
-const resp = await axios.post(
-  "https://api.openai.com/v1/responses",
-  {
-    model: "gpt-4o-mini",
-    input: [
-      { role: "system", content: systemPrompt },
-      {
-        role: "user",
-        content: `Analyze this website for SEO and trust signals: ${websiteUrl}`
-      }
-    ],
-    tools: [{ type: "web_search" }],
-    temperature: 0.2
-  },
-  {
-    headers: {
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      "Content-Type": "application/json"
+const extractJsonObject = (rawText) => {
+  if (!rawText || typeof rawText !== "string") {
+    throw new Error("Model did not return JSON text");
+  }
+
+  const firstBrace = rawText.indexOf("{");
+  const lastBrace = rawText.lastIndexOf("}");
+  const candidates = [
+    rawText.trim(),
+    rawText.match(/```json\s*([\s\S]*?)```/i)?.[1],
+    rawText.match(/```([\s\S]*?)```/i)?.[1],
+    firstBrace >= 0 && lastBrace > firstBrace
+      ? rawText.slice(firstBrace, lastBrace + 1)
+      : null
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      // Try the next candidate.
     }
   }
-);
 
-const outputText = extractTextFromResponse(resp);
-
-if (!outputText) {
-  throw new Error("No text output returned by model");
-}
-
-return JSON.parse(outputText);
-
+  throw new Error("Model returned invalid JSON");
 };
+
+const mergeWithTemplate = (template, value) => {
+  if (Array.isArray(template)) {
+    return Array.isArray(value)
+      ? value.filter((item) => item !== undefined)
+      : template;
+  }
+
+  if (template && typeof template === "object") {
+    const result = {};
+    const source = value && typeof value === "object" ? value : {};
+
+    for (const key of Object.keys(template)) {
+      result[key] = mergeWithTemplate(template[key], source[key]);
+    }
+
+    return result;
+  }
+
+  if (value === undefined || value === null || value === "") {
+    return template;
+  }
+
+  return value;
+};
+
+const sanitizeNaValues = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeNaValues(item));
+  }
+
+  if (value && typeof value === "object") {
+    const result = {};
+
+    for (const [key, nestedValue] of Object.entries(value)) {
+      result[key] = sanitizeNaValues(nestedValue);
+    }
+
+    return result;
+  }
+
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  const naLikeValues = new Set([
+    "",
+    "n/a",
+    "na",
+    "not available",
+    "unavailable",
+    "unknown",
+    "unable to verify",
+    "cannot verify"
+  ]);
+
+  return naLikeValues.has(normalized) ? "na" : value;
+};
+
+const applyTechnicalSeoEvidence = (merged, evidence) => {
+  const technicalSeo = merged.website_audit?.technical_seo;
+
+  if (!technicalSeo || !evidence) {
+    return merged;
+  }
+
+  technicalSeo.ssl_status = evidence.https_enabled === true ? "valid" : "missing";
+  technicalSeo.robots_txt = evidence.robots_txt === "present" ? "present" : "missing";
+  technicalSeo.sitemap = evidence.sitemap === "present" ? "present" : "missing";
+
+  if (evidence.viewport_meta_present === true) {
+    technicalSeo.mobile_friendly = "yes";
+  } else if (evidence.viewport_meta_present === false) {
+    technicalSeo.mobile_friendly = "missing";
+  } else if (technicalSeo.mobile_friendly === "na") {
+    technicalSeo.mobile_friendly = "missing";
+  }
+
+  const indexingIssues = [];
+  if (technicalSeo.robots_txt === "missing") {
+    indexingIssues.push("robots.txt not found");
+  }
+  if (technicalSeo.sitemap === "missing") {
+    indexingIssues.push("sitemap not found");
+  }
+  if (technicalSeo.ssl_status === "missing") {
+    indexingIssues.push("https not enabled");
+  }
+
+  if (!technicalSeo.indexing_issues.length) {
+    technicalSeo.indexing_issues = indexingIssues;
+  }
+
+  return merged;
+};
+
+const applyPageSpeedEvidence = (merged, pageSpeedInsights) => {
+  const pageSpeed = merged.website_audit?.page_speed;
+
+  if (!pageSpeed || !pageSpeedInsights) {
+    return merged;
+  }
+
+  for (const strategy of ["mobile", "desktop"]) {
+    const report = pageSpeedInsights[strategy];
+    if (!report) continue;
+
+    pageSpeed[strategy] = {
+      ...pageSpeed[strategy],
+      score: report.score,
+      status: report.status,
+      metrics: {
+        load_time: report.metrics?.load_time || "na",
+        lcp: report.metrics?.lcp || "na",
+        cls: report.metrics?.cls || "na",
+        inp_fid: report.metrics?.inp_fid || "na"
+      },
+      issues: Array.isArray(report.issues) ? report.issues : [],
+      ai_suggestions: Array.isArray(report.ai_suggestions)
+        ? report.ai_suggestions
+        : []
+    };
+  }
+
+  return merged;
+};
+
+const normalizeAuditPayload = (payload, websiteUrl, evidence) => {
+  const template = createAuditTemplate(websiteUrl);
+  const merged = applyPageSpeedEvidence(
+    applyTechnicalSeoEvidence(
+      sanitizeNaValues(mergeWithTemplate(template, payload)),
+      evidence
+    ),
+    evidence?.page_speed_insights
+  );
+
+  merged.input.website_url = websiteUrl;
+  merged.input.audit_timestamp = moment().toISOString();
+
+  return merged;
+};
+
+const buildAuditPrompts = (websiteUrl, evidence) => {
+  const responseShape = createAuditTemplate(websiteUrl);
+
+  const systemPrompt = `
+You are an evidence-only website audit agent.
+
+Rules you must follow:
+- Use ONLY the provided evidence.
+- Never guess, estimate, simulate, or invent facts.
+- If a value is not directly supported by evidence, return "na".
+- Do not use placeholder defaults like 0, false, true, "good", "missing", or "active" unless you can verify them.
+- If page_speed_insights is present in evidence, use those values as the source of truth for page speed fields.
+- For presence checks such as sitemap, robots_txt, and ssl_status, use "missing" when the item is not found.
+- For scores, return a number only if there is enough evidence to justify it. Otherwise return "na".
+- For booleans, return true or false only if directly verified. Otherwise return "na".
+- For arrays, return [] if there are no verified items.
+- Performance metrics such as load_time, lcp, cls, and inp_fid should be "na" unless directly available from evidence.
+- broken_links_count must be "na" unless links were directly tested.
+- If social media or Google Business Profile cannot be verified from evidence or public results, keep their fields as "na".
+- Keep arrays concise. Prefer at most 3 to 5 items per array unless the evidence clearly requires more.
+- Output valid JSON only. No markdown. No commentary. No extra keys.
+
+Return exactly this JSON shape:
+${JSON.stringify(responseShape)}
+`.trim();
+
+  const userPrompt = `
+Analyze this website URL: ${websiteUrl}
+
+Provided evidence:
+${JSON.stringify(evidence, null, 2)}
+
+Focus on accurate, non-hallucinated output. If something is unavailable or uncertain, set it to "na".
+`.trim();
+
+  return { systemPrompt, userPrompt };
+};
+
+const isRetryableOpenAiError = (error) => {
+  const retryableCodes = new Set(["ECONNRESET", "ETIMEDOUT", "ECONNABORTED"]);
+  const message = `${error?.message || ""}`.toLowerCase();
+
+  return (
+    retryableCodes.has(error?.code) ||
+    message.includes("socket hang up") ||
+    message.includes("timeout")
+  );
+};
+
+const shouldRetryWithoutWebSearch = (error) => {
+  const message = `${error?.message || ""}`.toLowerCase();
+  const apiMessage = `${
+    error?.response?.data?.error?.message || ""
+  }`.toLowerCase();
+
+  return (
+    isRetryableOpenAiError(error) ||
+    message.includes("model returned invalid json") ||
+    apiMessage.includes("web search cannot be used with json mode")
+  );
+};
+
+const fetchWebSearchEvidence = async (websiteUrl) => {
+  try {
+    const resp = await axios.post(
+      "https://api.openai.com/v1/responses",
+      {
+        model: "gpt-5-mini",
+        input: [
+          {
+            role: "system",
+            content: [
+              {
+                type: "input_text",
+                text:
+                  "Use web search to collect only publicly verifiable audit evidence for the provided website. Return concise plain text only. Do not output JSON. Focus on public social links, business profile hints, and any public facts that are directly relevant to a website audit. If nothing reliable is found, return 'na'."
+              }
+            ]
+          },
+          {
+            role: "user",
+            content: [
+              {
+                type: "input_text",
+                text: `Collect web-search evidence for this website: ${websiteUrl}`
+              }
+            ]
+          }
+        ],
+        tools: [{ type: "web_search_preview" }],
+        max_output_tokens: 1200
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        timeout: 45000,
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity
+      }
+    );
+
+    return extractTextFromResponse(resp) || "na";
+  } catch (error) {
+    console.error("Web search evidence fetch failed:", {
+      message: error.message,
+      code: error.code || "na",
+      status: error.response?.status || "na",
+      data: error.response?.data || "na"
+    });
+
+    return "na";
+  }
+};
+
+const requestSeoAuditFromOpenAI = async ({ websiteUrl, evidence }) => {
+  const { systemPrompt, userPrompt } = buildAuditPrompts(websiteUrl, evidence);
+  const payload = {
+    model: "gpt-5-mini",
+    input: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt }
+    ],
+    text: {
+      format: {
+        type: "json_object"
+      }
+    },
+    max_output_tokens: 6000
+  };
+
+  const resp = await axios.post(
+    "https://api.openai.com/v1/responses",
+    payload,
+    {
+      headers: {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      timeout: 45000,
+      maxBodyLength: Infinity,
+      maxContentLength: Infinity
+    }
+  );
+
+  const outputText = extractTextFromResponse(resp);
+
+  if (!outputText) {
+    throw new Error("No text output returned by model");
+  }
+
+  return normalizeAuditPayload(extractJsonObject(outputText), websiteUrl, evidence);
+};
+
+const seoWebsiteAuditJSON = async (websiteUrl) => {
+  const [websiteEvidence, pageSpeedInsights, webSearchSummary] = await Promise.all([
+    fetchWebsiteEvidence(websiteUrl),
+    fetchPageSpeedEvidence(websiteUrl),
+    fetchWebSearchEvidence(websiteUrl)
+  ]);
+  const evidence = {
+    ...websiteEvidence,
+    page_speed_insights: pageSpeedInsights,
+    web_search_summary: webSearchSummary
+  };
+
+  try {
+    return await requestSeoAuditFromOpenAI({ websiteUrl, evidence });
+  } catch (error) {
+    if (!shouldRetryWithoutWebSearch(error)) {
+      throw error;
+    }
+
+    console.error(
+      "SEO audit primary OpenAI request failed, retrying with local evidence only:",
+      error.message
+    );
+
+    const fallbackEvidence = {
+      ...evidence,
+      web_search_summary: "na"
+    };
+
+    return requestSeoAuditFromOpenAI({
+      websiteUrl,
+      evidence: fallbackEvidence
+    });
+  }
+};
+
 const runSeoAudit = async (req, res) => {
   try {
-
-     const website = normalizeWebsiteUrl(req.body.website);
+    const website = normalizeWebsiteUrl(req.body.website);
     console.log("Running SEO audit for:", website);
-    // Basic validation
+
     if (!website) {
       return res.status(400).json({
         success: false,
@@ -499,21 +1090,24 @@ const runSeoAudit = async (req, res) => {
       });
     }
 
-    // Run SEO audit agent
     const auditResult = await seoWebsiteAuditJSON(website);
 
     return res.status(200).json({
       success: true,
       data: auditResult
     });
-
   } catch (error) {
-    console.error("SEO Audit Error:", error.message);
+    console.error("SEO Audit Error:", {
+      message: error.message,
+      code: error.code || "na",
+      status: error.response?.status || "na",
+      data: error.response?.data || "na"
+    });
 
     return res.status(500).json({
       success: false,
       message: "Failed to run SEO audit",
-      error: error.message
+      error: error.response?.data?.error?.message || error.message
     });
   }
 };

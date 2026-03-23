@@ -1,193 +1,185 @@
 {
   "organization": {
-    "name": "1ClickDistributors",
-    "website": "https://1clickdistributors.com",
-    "description": "1ClickDistributors is a B2B business growth and distribution platform that helps manufacturers, brands, and MSMEs connect with distributors, dealers, and franchise partners across India.",
+    "name": "FixMyWeb",
+    "website": "https://fixmyweb.tech",
+    "description": "FixMyWeb is a web development and digital growth platform that helps businesses enhance their online presence, performance, and lead generation through modern digital solutions.",
     "founded_year": 2018,
-    "industry": "Business Consulting & Distribution Services",
+    "industry": "Web Development & Digital Marketing",
     "country": "India"
   },
 
-  "mission": "To simplify and accelerate distribution expansion for manufacturers and MSMEs by connecting them with verified distributors and providing strategic consultancy and digital growth support.",
+  "mission": "To help businesses grow digitally by improving their online presence, performance, visibility, and customer engagement through smart web and marketing solutions.",
 
   "target_audience": [
-    "Manufacturers",
-    "Brands",
+    "Startups",
+    "Local Businesses",
     "MSMEs",
     "Entrepreneurs",
-    "Distributors",
-    "Franchise seekers"
+    "Brands",
+    "Service Providers"
   ],
 
   "services": [
     {
-      "service_id": "distributor_network",
-      "name": "Distributor & Dealer Network",
-      "description": "Connects brands with verified distributors and dealers using industry, location, and business-size filters."
+      "service_id": "website_audit",
+      "name": "Website Audit & Analysis",
+      "description": "Comprehensive website audit to identify performance issues, SEO gaps, UI/UX problems, and technical errors with actionable insights."
     },
     {
-      "service_id": "franchise_opportunities",
-      "name": "Franchise Opportunities",
-      "description": "Provides franchise listings and guidance for entrepreneurs across multiple industries."
+      "service_id": "website_development",
+      "name": "Website Design & Development",
+      "description": "Professional website design and development including business websites, landing pages, and custom solutions focused on conversions."
     },
     {
-      "service_id": "business_consultancy",
-      "name": "Consultancy & Strategy Support",
-      "description": "Includes distribution strategy planning, GTM support, pitch deck creation, onboarding assistance, and retention strategies."
+      "service_id": "seo_optimization",
+      "name": "SEO & Search Engine Optimization",
+      "description": "Improves website ranking and visibility on search engines through on-page, off-page, and technical SEO strategies."
     },
     {
-      "service_id": "growth_marketing",
-      "name": "Growth & Marketing Support",
-      "description": "Offers 360-degree promotion, market research, analytics, and e-commerce growth support."
+      "service_id": "gmb_optimization",
+      "name": "Google My Business (GMB) Optimization",
+      "description": "Optimizes local business presence on Google Maps and search results to increase visibility, calls, and local leads."
     },
     {
-      "service_id": "trade_networking",
-      "name": "Trade Shows & Networking",
-      "description": "Supports brand exposure and lead generation through trade shows and networking opportunities."
+      "service_id": "social_media_management",
+      "name": "Social Media Setup & Management",
+      "description": "Creation and optimization of social media profiles with content strategy to boost engagement and brand presence."
+    },
+    {
+      "service_id": "ads_management",
+      "name": "Paid Ads Management",
+      "description": "Setup and management of paid advertising campaigns on platforms like Google Ads and Meta Ads to generate leads and sales."
+    },
+    {
+      "service_id": "chatbot_development",
+      "name": "AI Chatbot Development",
+      "description": "Custom AI chatbot development for websites and businesses to automate customer interaction, lead capture, and support."
     }
   ],
 
   "digital_services": [
     {
-      "service_id": "website_development",
-      "name": "Website Design & Development",
-      "description": "Provides professional website design and development solutions including business websites and landing pages to support brand visibility and lead generation."
-    },
-    {
-      "service_id": "seo_optimization",
-      "name": "SEO & Search Visibility Optimization",
-      "description": "Offers SEO support to improve website visibility and organic reach through structured optimization and best practices."
-    },
-    {
       "service_id": "website_performance_optimization",
       "name": "Website Performance & Speed Optimization",
-      "description": "Helps improve website loading speed, user experience, and overall performance through performance analysis and optimization support."
+      "description": "Enhances website loading speed, responsiveness, and overall performance to improve user experience and SEO ranking."
+    },
+    {
+      "service_id": "conversion_optimization",
+      "name": "Conversion Rate Optimization",
+      "description": "Improves website structure and user journey to increase leads, conversions, and customer engagement."
     },
     {
       "service_id": "digital_growth_strategy",
-      "name": "Digital Growth & Online Strategy",
-      "description": "Provides strategic guidance on digital presence, analytics review, and online growth planning aligned with business goals."
+      "name": "Digital Growth Strategy",
+      "description": "Strategic planning for online growth including analytics, funnel building, and performance tracking."
+    },
+    {
+      "service_id": "branding_support",
+      "name": "Branding & Online Presence",
+      "description": "Helps businesses build a strong online identity through consistent branding across website and digital platforms."
     }
   ],
 
   "industries_served": [
-    "FMCG",
-    "Food & Beverages",
-    "Chemicals",
-    "Electronics",
-    "Electrical",
-    "Automobile Parts",
-    "Apparel & Fashion",
-    "Industrial Goods",
-    "Consumer Products"
+    "Local Businesses",
+    "E-commerce",
+    "Real Estate",
+    "Healthcare",
+    "Education",
+    "Hospitality",
+    "Service Industry",
+    "Startups",
+    "Consulting Firms"
   ],
 
   "how_it_works": [
     {
       "step": 1,
-      "title": "Brand Registration",
-      "description": "Brands or manufacturers create a profile and list their products and distribution requirements."
+      "title": "Requirement Analysis",
+      "description": "Understanding business goals, current digital presence, and key challenges."
     },
     {
       "step": 2,
-      "title": "Distributor Matching",
-      "description": "The platform matches brands with suitable distributors based on industry, geography, and capacity."
+      "title": "Audit & Strategy Planning",
+      "description": "Performing website audit and creating a custom strategy for development, SEO, and growth."
     },
     {
       "step": 3,
-      "title": "Connection & Discussion",
-      "description": "Brands and distributors communicate to discuss terms and opportunities."
+      "title": "Execution & Optimization",
+      "description": "Implementing website improvements, SEO, ads, and automation solutions."
     },
     {
       "step": 4,
-      "title": "Consultancy & Execution",
-      "description": "Optional expert support for onboarding, strategy execution, digital growth, and market expansion."
+      "title": "Monitoring & Growth",
+      "description": "Continuous tracking, optimization, and scaling of digital performance."
     }
   ],
 
   "value_proposition": {
-    "for_brands": [
-      "Faster distributor discovery",
-      "Pan-India market reach",
-      "Professional distribution and digital strategy",
-      "Reduced expansion risk"
+    "for_businesses": [
+      "Stronger online presence",
+      "Higher search visibility",
+      "Improved website performance",
+      "More leads and conversions",
+      "Automated customer engagement"
     ],
     "for_entrepreneurs": [
-      "Access to distributorship opportunities",
-      "Franchise business options",
-      "Guided onboarding and growth support"
+      "End-to-end digital setup",
+      "Affordable growth solutions",
+      "Guided strategy and execution",
+      "Faster business scalability"
     ]
   },
 
   "service_scope_notes": [
-    "All services are provided as professional consultancy and support based on business requirements.",
-    "Specific technical implementations, tools, timelines, pricing, or guarantees are discussed after requirement evaluation.",
+    "All services are provided as professional consultancy and execution support based on business requirements.",
+    "Specific tools, timelines, pricing, and deliverables are finalized after requirement analysis.",
     "The chatbot provides high-level guidance and does not replace expert consultation."
   ],
 
   "contact_information": {
-    "email": "contact@1clickdistributors.com",
-    "phone": "+91-8588999978",
+    "email": "fixmywebtech@gmail.com",
+    "phone": "+91-8929596603",
     "registered_office": "B-2/11, Block B, Mohan Cooperative Industrial Estate, Badarpur, Delhi 110044, India",
-    "corporate_office": "A-81, Ground Floor, Sector 4, Noida, Uttar Pradesh 201301, India"
+    "corporate_office": "C-3, 3rd Floor, Sector 6, Noida, Uttar Pradesh 201301, India"
   },
 
   "faqs": [
     {
-      "question": "What is 1ClickDistributors?",
-      "answer": "1ClickDistributors is a B2B platform that helps manufacturers, brands, and MSMEs expand their business by connecting them with distributors, dealers, and franchise partners across India, along with consultancy and growth support."
+      "question": "What is FixMyWeb?",
+      "answer": "FixMyWeb is a web development and digital growth platform that helps businesses improve their website, SEO, performance, and online presence."
     },
     {
-      "question": "Who can use 1ClickDistributors?",
-      "answer": "Manufacturers, brands, MSMEs, distributors, entrepreneurs, and franchise seekers can use the platform for business expansion and growth support."
+      "question": "Who can use FixMyWeb?",
+      "answer": "Startups, local businesses, MSMEs, entrepreneurs, and brands looking to grow digitally can use FixMyWeb."
     },
     {
-      "question": "Which industries are supported?",
-      "answer": "Industries supported include FMCG, food and beverages, chemicals, electronics, apparel, automobile parts, industrial goods, and consumer products."
-    },
-    {
-      "question": "What services does 1ClickDistributors provide?",
-      "answer": "The company provides distributor and dealer network services, franchise opportunities, consultancy and strategy support, growth and marketing support, trade networking, and digital services including website and performance optimization."
-    },
-    {
-      "question": "Do you help with distributor or dealer onboarding?",
-      "answer": "Yes, the platform helps brands connect with verified distributors and dealers and supports onboarding through consultancy and strategy services."
-    },
-    {
-      "question": "Do you provide franchise opportunities?",
-      "answer": "Yes, 1ClickDistributors offers franchise listings and guidance for entrepreneurs across multiple industries."
-    },
-    {
-      "question": "Do you offer business consultancy?",
-      "answer": "Yes, consultancy services include distribution strategy planning, GTM support, pitch deck creation, onboarding assistance, and retention strategies."
+      "question": "What services does FixMyWeb provide?",
+      "answer": "Services include website audit, website development, SEO, GMB optimization, social media management, paid ads, and AI chatbot development."
     },
     {
       "question": "Do you provide website development services?",
-      "answer": "Yes, the company provides website design and development services to support professional online presence and lead generation."
+      "answer": "Yes, we create professional and conversion-focused websites tailored to business needs."
     },
     {
       "question": "Do you offer SEO services?",
-      "answer": "Yes, SEO and search visibility optimization services are offered to improve organic reach and website discoverability."
+      "answer": "Yes, we provide complete SEO solutions to improve rankings and organic traffic."
     },
     {
-      "question": "Can you help improve website performance and speed?",
-      "answer": "Yes, 1ClickDistributors provides website performance and speed optimization support focused on improving loading speed, user experience, and overall website performance."
+      "question": "Can you manage ads for my business?",
+      "answer": "Yes, we run and optimize paid ad campaigns on Google and Meta platforms."
     },
     {
-      "question": "Do you provide technical implementation details through the chatbot?",
-      "answer": "No, the chatbot provides high-level guidance only. Detailed technical execution is discussed with the expert team after requirement evaluation."
+      "question": "Do you provide chatbot development?",
+      "answer": "Yes, we develop AI chatbots for automation, lead capture, and customer support."
     },
     {
-      "question": "How can I contact 1ClickDistributors?",
-      "answer": "You can contact the team via email at contact@1clickdistributors.com or by phone at +91-8588999978."
+      "question": "Do you provide detailed technical execution through chatbot?",
+      "answer": "No, detailed execution is handled by experts after requirement discussion."
+    },
+    {
+      "question": "How can I contact FixMyWeb?",
+      "answer": "You can contact us via email at fixmywebtech@gmail.com or call +91-8929596603."
     }
-  ],
-
-  "intended_use": [
-    "Customer support chatbot",
-    "Sales & pre-sales assistant",
-    "Voice agent knowledge base",
-    "RAG / vector database ingestion",
-    "Digital services and website support assistant"
   ]
 }
