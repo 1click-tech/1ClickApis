@@ -14,6 +14,13 @@ const HTTP_HEADERS = {
 };
 const PAGESPEED_API_URL =
   "https://pagespeedonline.googleapis.com/pagespeedonline/v5/runPagespeed";
+const SOCIAL_PLATFORMS = [
+  "instagram",
+  "facebook",
+  "linkedin",
+  "twitter_x",
+  "youtube"
+];
 
 const normalizeWebsiteUrl = (input) => {
   if (!input || typeof input !== "string") return null;
@@ -155,7 +162,7 @@ const createAuditTemplate = (websiteUrl) => ({
     },
     final_social_score: {
       score: "na",
-      score_out_of: 100,
+      score_out_of: 10,
       breakdown: {
         profile_optimization: "na",
         consistency: "na",
@@ -195,7 +202,7 @@ const createAuditTemplate = (websiteUrl) => ({
     },
     final_gmb_score: {
       score: "na",
-      score_out_of: 100,
+      score_out_of: 10,
       breakdown: {
         verification: "na",
         category_accuracy: "na",
@@ -857,6 +864,20 @@ const normalizeSocialMediaAuditDisplay = (audit) => {
 const isNumericScore = (value) =>
   typeof value === "number" && Number.isFinite(value);
 
+const normalizeAuditText = (value) =>
+  typeof value === "string" ? value.trim().toLowerCase() : "";
+
+const hasMeaningfulAuditValue = (value) => {
+  if (value === null || value === undefined) return false;
+
+  if (typeof value === "string") {
+    const normalized = normalizeAuditText(value);
+    return normalized !== "" && normalized !== "na";
+  }
+
+  return true;
+};
+
 const clampScore = (value, min = 0, max = 10) => {
   if (!isNumericScore(value)) return "na";
   return Math.max(min, Math.min(max, value));
@@ -866,7 +887,13 @@ const normalizeTenPointScore = (value, decimals = 1) => {
   if (!isNumericScore(value)) return "na";
 
   const normalizedValue =
-    value <= 10 ? value : value <= 100 ? value / 10 : (value / 100) * 10;
+    value <= 1
+      ? value * 10
+      : value <= 10
+      ? value
+      : value <= 100
+      ? value / 10
+      : (value / 100) * 10;
 
   return clampScore(Number(normalizedValue.toFixed(decimals)));
 };
@@ -879,6 +906,83 @@ const averageScores = (scores, decimals = 1) => {
     validScores.reduce((sum, score) => sum + score, 0) / validScores.length;
 
   return Number(average.toFixed(decimals));
+};
+
+const scoreQualitativeAuditValue = (value) => {
+  if (!hasMeaningfulAuditValue(value)) return "na";
+
+  if (typeof value === "boolean") {
+    return value ? 10 : 0;
+  }
+
+  if (isNumericScore(value)) {
+    return normalizeTenPointScore(value);
+  }
+
+  const normalized = normalizeAuditText(value);
+
+  const scoringRules = [
+    {
+      score: 10,
+      keywords: [
+        "daily",
+        "weekly",
+        "regular",
+        "consistent",
+        "active",
+        "optimized",
+        "clear",
+        "good",
+        "high",
+        "strong",
+        "present",
+        "verified",
+        "valid",
+        "visible",
+        "yes",
+        "complete",
+        "covered"
+      ]
+    },
+    {
+      score: 7,
+      keywords: [
+        "monthly",
+        "moderate",
+        "average",
+        "partially",
+        "partial"
+      ]
+    },
+    {
+      score: 5,
+      keywords: ["needs improvement", "improving", "sometimes", "occasional"]
+    },
+    {
+      score: 2.5,
+      keywords: ["rarely", "limited", "low", "weak"]
+    },
+    {
+      score: 0,
+      keywords: [
+        "missing",
+        "inactive",
+        "not found",
+        "poor",
+        "unclear",
+        "invalid",
+        "no"
+      ]
+    }
+  ];
+
+  for (const rule of scoringRules) {
+    if (rule.keywords.some((keyword) => normalized.includes(keyword))) {
+      return rule.score;
+    }
+  }
+
+  return "na";
 };
 
 const inferBusinessName = (evidence) => {
@@ -939,26 +1043,44 @@ const computeSeoEvidenceScore = (evidence) => {
   return clampScore(Number(((points / checks) * 10).toFixed(1)));
 };
 
-const computeTechnicalEvidenceScore = (evidence) => {
+const computeTechnicalEvidenceScore = (evidence, technicalSeo = null) => {
   if (!evidence) return "na";
 
-  let points = 0;
-  let checks = 0;
+  const checks = [];
+  const totalChecks = 5;
 
-  checks += 1;
-  if (evidence.https_enabled === true) points += 1;
+  if (evidence.https_enabled === true || evidence.https_enabled === false) {
+    checks.push(evidence.https_enabled ? 1 : 0);
+  }
 
-  checks += 1;
-  if (evidence.robots_txt === "present") points += 1;
+  if (["present", "missing"].includes(evidence.robots_txt)) {
+    checks.push(evidence.robots_txt === "present" ? 1 : 0);
+  }
 
-  checks += 1;
-  if (evidence.sitemap === "present") points += 1;
+  if (["present", "missing"].includes(evidence.sitemap)) {
+    checks.push(evidence.sitemap === "present" ? 1 : 0);
+  }
 
-  checks += 1;
-  if (evidence.viewport_meta_present === true) points += 1;
+  if (
+    evidence.viewport_meta_present === true ||
+    evidence.viewport_meta_present === false
+  ) {
+    checks.push(evidence.viewport_meta_present ? 1 : 0);
+  }
 
-  if (!checks) return "na";
-  return clampScore(Number(((points / checks) * 10).toFixed(1)));
+  const brokenLinksCount = technicalSeo?.broken_links_count;
+  if (isNumericScore(brokenLinksCount)) {
+    checks.push(
+      brokenLinksCount === 0 ? 1 : brokenLinksCount <= 2 ? 0.5 : 0
+    );
+  }
+
+  if (!checks.length) return "na";
+
+  const baseScore = (checks.reduce((sum, score) => sum + score, 0) / checks.length) * 10;
+  const coverageCap = (checks.length / totalChecks) * 10;
+
+  return clampScore(Number(Math.min(baseScore, coverageCap).toFixed(1)));
 };
 
 const computeUiUxEvidenceScore = (evidence) => {
@@ -1045,6 +1167,26 @@ const applyUiUxEvidence = (merged, evidence) => {
   return merged;
 };
 
+const applySocialMediaEvidence = (merged, evidence) => {
+  const socialAudit = merged.social_media_audit;
+  const socialLinks = evidence?.social_profile_links;
+
+  if (!socialAudit || !socialLinks || typeof socialLinks !== "object") {
+    return merged;
+  }
+
+  for (const platform of SOCIAL_PLATFORMS) {
+    if (
+      !hasMeaningfulAuditValue(socialAudit.platform_presence?.[platform]) &&
+      hasMeaningfulAuditValue(socialLinks[platform])
+    ) {
+      socialAudit.platform_presence[platform] = socialLinks[platform];
+    }
+  }
+
+  return merged;
+};
+
 const applyComputedWebsiteScores = (merged, evidence) => {
   const websiteAudit = merged.website_audit;
   if (!websiteAudit) return merged;
@@ -1057,15 +1199,30 @@ const applyComputedWebsiteScores = (merged, evidence) => {
   );
   const speedScore10 = averageScores([mobileSpeedScore, desktopSpeedScore], 1);
 
-  if (!isNumericScore(websiteAudit.seo_report?.seo_score)) {
+  if (isNumericScore(websiteAudit.seo_report?.seo_score)) {
+    websiteAudit.seo_report.seo_score = normalizeTenPointScore(
+      websiteAudit.seo_report.seo_score
+    );
+  } else {
     websiteAudit.seo_report.seo_score = computeSeoEvidenceScore(evidence);
   }
 
-  if (!isNumericScore(websiteAudit.technical_seo?.technical_score)) {
-    websiteAudit.technical_seo.technical_score = computeTechnicalEvidenceScore(evidence);
+  if (isNumericScore(websiteAudit.technical_seo?.technical_score)) {
+    websiteAudit.technical_seo.technical_score = normalizeTenPointScore(
+      websiteAudit.technical_seo.technical_score
+    );
+  } else {
+    websiteAudit.technical_seo.technical_score = computeTechnicalEvidenceScore(
+      evidence,
+      websiteAudit.technical_seo
+    );
   }
 
-  if (!isNumericScore(websiteAudit.ui_ux_audit?.ui_ux_score)) {
+  if (isNumericScore(websiteAudit.ui_ux_audit?.ui_ux_score)) {
+    websiteAudit.ui_ux_audit.ui_ux_score = normalizeTenPointScore(
+      websiteAudit.ui_ux_audit.ui_ux_score
+    );
+  } else {
     websiteAudit.ui_ux_audit.ui_ux_score = computeUiUxEvidenceScore(evidence);
   }
 
@@ -1116,6 +1273,120 @@ const applyComputedWebsiteScores = (merged, evidence) => {
   ) {
     websiteAudit.final_website_score.issue_summary =
       websiteAudit.technical_seo.indexing_issues.join(", ");
+  }
+
+  return merged;
+};
+
+const applyComputedSocialScores = (merged, evidence) => {
+  const socialAudit = merged.social_media_audit;
+
+  if (!socialAudit?.final_social_score) {
+    return merged;
+  }
+
+  const platformPresenceScore = clampScore(
+    (SOCIAL_PLATFORMS.filter((platform) => {
+      const platformValue =
+        socialAudit.platform_presence?.[platform] || evidence?.social_profile_links?.[platform];
+      return hasMeaningfulAuditValue(platformValue);
+    }).length /
+      SOCIAL_PLATFORMS.length) *
+      10
+  );
+
+  const profileOptimizationScore = averageScores(
+    [
+      scoreQualitativeAuditValue(socialAudit.profile_optimization?.bio_clarity),
+      scoreQualitativeAuditValue(socialAudit.profile_optimization?.cta_present),
+      scoreQualitativeAuditValue(socialAudit.profile_optimization?.link_in_bio)
+    ],
+    1
+  );
+
+  const consistencyScore = averageScores(
+    SOCIAL_PLATFORMS.map((platform) =>
+      scoreQualitativeAuditValue(socialAudit.posting_frequency?.[platform])
+    ),
+    1
+  );
+
+  const engagementScore = scoreQualitativeAuditValue(
+    socialAudit.engagement_analysis?.engagement_level
+  );
+
+  const contentQualityScore = averageScores(
+    [
+      scoreQualitativeAuditValue(socialAudit.content_strategy_gap?.educational),
+      scoreQualitativeAuditValue(
+        socialAudit.content_strategy_gap?.problem_solving
+      ),
+      scoreQualitativeAuditValue(
+        socialAudit.content_strategy_gap?.trust_building
+      ),
+      scoreQualitativeAuditValue(socialAudit.content_strategy_gap?.sales_cta)
+    ],
+    1
+  );
+
+  const computedBreakdown = {
+    profile_optimization: profileOptimizationScore,
+    consistency: consistencyScore,
+    engagement: engagementScore,
+    content_quality: contentQualityScore,
+    platform_presence: platformPresenceScore
+  };
+
+  for (const [key, computedValue] of Object.entries(computedBreakdown)) {
+    const currentValue = socialAudit.final_social_score.breakdown?.[key];
+    if (!isNumericScore(currentValue) && isNumericScore(computedValue)) {
+      socialAudit.final_social_score.breakdown[key] = computedValue;
+    } else if (isNumericScore(currentValue)) {
+      socialAudit.final_social_score.breakdown[key] =
+        normalizeTenPointScore(currentValue);
+    }
+  }
+
+  const overallSocialScore = averageScores(
+    Object.values(socialAudit.final_social_score.breakdown),
+    1
+  );
+
+  if (isNumericScore(socialAudit.final_social_score.score)) {
+    socialAudit.final_social_score.score = normalizeTenPointScore(
+      socialAudit.final_social_score.score
+    );
+  } else {
+    socialAudit.final_social_score.score =
+      overallSocialScore === "na" ? null : overallSocialScore;
+  }
+
+  return merged;
+};
+
+const applyComputedGmbScores = (merged) => {
+  const gmbAudit = merged.gmb_audit;
+
+  if (!gmbAudit?.final_gmb_score) {
+    return merged;
+  }
+
+  const breakdown = gmbAudit.final_gmb_score.breakdown || {};
+  for (const [key, value] of Object.entries(breakdown)) {
+    if (isNumericScore(value)) {
+      breakdown[key] = normalizeTenPointScore(value);
+    }
+  }
+
+  if (isNumericScore(gmbAudit.final_gmb_score.score)) {
+    gmbAudit.final_gmb_score.score = normalizeTenPointScore(
+      gmbAudit.final_gmb_score.score
+    );
+  } else {
+    const averagedBreakdownScore = averageScores(Object.values(breakdown), 1);
+    if (averagedBreakdownScore !== "na") {
+      gmbAudit.final_gmb_score.score = averagedBreakdownScore;
+    }
   }
 
   return merged;
@@ -1193,18 +1464,27 @@ const applyPageSpeedEvidence = (merged, pageSpeedInsights) => {
 
 const normalizeAuditPayload = (payload, websiteUrl, evidence) => {
   const template = createAuditTemplate(websiteUrl);
-  const merged = applyComputedWebsiteScores(
-    applyPageSpeedEvidence(
-      applyUiUxEvidence(
-        applyTechnicalSeoEvidence(
-          normalizeSocialMediaAuditDisplay(
-            sanitizeNaValues(mergeWithTemplate(template, payload))
+  const merged = applyComputedGmbScores(
+    applyComputedSocialScores(
+      applyComputedWebsiteScores(
+        applyPageSpeedEvidence(
+          applyUiUxEvidence(
+            applyTechnicalSeoEvidence(
+              applySocialMediaEvidence(
+                normalizeSocialMediaAuditDisplay(
+                  sanitizeNaValues(mergeWithTemplate(template, payload))
+                ),
+                evidence
+              ),
+              evidence
+            ),
+            evidence
           ),
-          evidence
+          evidence?.page_speed_insights
         ),
         evidence
       ),
-      evidence?.page_speed_insights
+      evidence
     ),
     evidence
   );
